@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// SQLite = arquivo local, sem instalar PostgreSQL (como muitos projetos em dev)
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum GamePhase {
+  LOBBY
+  CONFIG_1
+  ROUND_1
+  RESULTS_1
+  CONFIG_2
+  ROUND_2
+  ROUND_3
+  FINAL
+}
+
+model Session {
+  id               String          @id
+  pin              String          @unique
+  facilitatorToken String
+  phase            GamePhase       @default(LOBBY)
+  currentRound     Int             @default(0)
+  createdAt        DateTime        @default(now())
+  stores           Store[]
+  roundResults     RoundResult[]
+  finalRankings    FinalRanking[]
+}
+
+model Store {
+  id            String   @id
+  sessionId     String
+  session       Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  companyName   String
+  playerName    String
+  storeToken    String
+  planDraft     Json?
+  planSubmitted Json?
+  cashRemaining Float?
+  connected     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([sessionId, companyName])
+  @@index([sessionId])
+}
+
+model RoundResult {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  round     Int
+  results   Json
+  createdAt DateTime @default(now())
+
+  @@unique([sessionId, round])
+  @@index([sessionId])
+}
+
+model FinalRanking {
+  id            String  @id @default(cuid())
+  sessionId     String
+  session       Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  storeId       String
+  companyName   String
+  ebitdaPercent Float
+  position      Int
+
+  @@unique([sessionId, storeId])
+  @@index([sessionId])
+}
