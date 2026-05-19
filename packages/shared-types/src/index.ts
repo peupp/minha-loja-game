@@ -36,6 +36,30 @@ export interface StorePlan {
   quizTotal: number;
 }
 
+export interface ProductCategory {
+  id: string;
+  name: string;
+  unitCost: number;
+  maxAvailable: number;
+}
+
+export interface GameConfig {
+  categories: ProductCategory[];
+  initialCash: number;
+  interestRateMonth: number;
+  idealOperators: number;
+  taxRate: number;
+  capexCosts: Record<CapexType, number>;
+  monthlyLicenseBase: number;
+  maintenanceEquipment: number;
+  selfCheckoutLicenseEach: number;
+  salarySales: number;
+  salaryService: number;
+  roundDemandBase: number;
+  agingRate: number;
+  breakageRate: number;
+}
+
 export interface Store {
   id: string;
   companyName: string;
@@ -71,6 +95,7 @@ export interface SessionState {
   facilitatorToken: string;
   phase: GamePhase;
   currentRound: number;
+  gameConfig: GameConfig;
   stores: Store[];
   roundResults: RoundResult[];
   finalRanking: { storeId: string; companyName: string; ebitdaPercent: number }[];

@@ -3,7 +3,7 @@ import { useSearchParams, Link } from "react-router-dom";
 import type { StorePlan } from "@minha-loja/shared-types";
 import { DEFAULT_PLAN } from "@minha-loja/shared-types";
 import { useSession } from "../hooks/useSession";
-import { fetchParams, savePlan, submitPlan } from "../api";
+import { savePlan, submitPlan } from "../api";
 import PlanEditor from "../components/PlanEditor";
 import { PHASE_LABELS } from "../constants";
 import { csatBreakdown } from "../utils/csat";
@@ -21,11 +21,6 @@ export default function StorePage() {
   const { session, loading } = useSession(sessionId);
   const [cred, setCred] = useState<StoreCred | null>(null);
   const [plan, setPlan] = useState<StorePlan>(DEFAULT_PLAN);
-  const [params, setParams] = useState<{
-    categories: { id: string; name: string; unitCost: number; maxAvailable: number }[];
-    initialCash: number;
-    capexCosts: Record<string, number>;
-  } | null>(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [msgTone, setMsgTone] = useState<"success" | "error">("success");
@@ -34,7 +29,6 @@ export default function StorePage() {
     if (!sessionId) return;
     const raw = localStorage.getItem(`store:${sessionId}`);
     if (raw) setCred(JSON.parse(raw));
-    fetchParams().then(setParams);
   }, [sessionId]);
 
   useEffect(() => {
@@ -88,7 +82,7 @@ export default function StorePage() {
     );
   }
 
-  if (loading || !session || !params) {
+  if (loading || !session) {
     return <div className="page">Carregando...</div>;
   }
 
@@ -97,7 +91,8 @@ export default function StorePage() {
   const { csat } = csatBreakdown(
     plan.operatorsSales,
     plan.quizCorrect,
-    plan.quizTotal
+    plan.quizTotal,
+    session.gameConfig.idealOperators
   );
 
   return (
@@ -150,7 +145,7 @@ export default function StorePage() {
           <PlanEditor
             plan={plan}
             onChange={setPlan}
-            params={params}
+            params={session.gameConfig}
             sessionId={sessionId}
           />
           <div className="actions">

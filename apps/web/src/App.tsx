@@ -3,6 +3,7 @@ import Home from "./pages/Home";
 import Join from "./pages/Join";
 import StorePage from "./pages/StorePage";
 import FacilitatorPage from "./pages/FacilitatorPage";
+import FacilitatorSetupPage from "./pages/FacilitatorSetupPage";
 import DisplayPage from "./pages/DisplayPage";
 import QuizPage from "./pages/QuizPage";
 import RankingPage from "./pages/RankingPage";
@@ -15,6 +16,7 @@ export default function App() {
       <Route path="/loja" element={<StorePage />} />
       <Route path="/quiz" element={<QuizPage />} />
       <Route path="/facilitador" element={<FacilitatorPage />} />
+      <Route path="/facilitador/configuracao" element={<FacilitatorSetupPage />} />
       <Route path="/telao" element={<DisplayPage />} />
       <Route path="/ranking" element={<RankingPage />} />
     </Routes>

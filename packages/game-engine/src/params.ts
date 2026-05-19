@@ -1,9 +1,6 @@
-export interface ProductCategory {
-  id: string;
-  name: string;
-  unitCost: number;
-  maxAvailable: number;
-}
+import type { GameConfig, ProductCategory } from "@minha-loja/shared-types";
+
+export type { ProductCategory };
 
 export const INITIAL_CASH = 700_000;
 export const INTEREST_RATE_MONTH = 0.12;
@@ -35,3 +32,20 @@ export const SALARY_SERVICE = 3_200;
 export const ROUND_DEMAND_BASE = 2_500_000;
 export const AGING_RATE = 0.15;
 export const BREAKAGE_RATE = 0.08;
+
+export const DEFAULT_GAME_CONFIG: GameConfig = {
+  categories: CATEGORIES,
+  initialCash: INITIAL_CASH,
+  interestRateMonth: INTEREST_RATE_MONTH,
+  idealOperators: IDEAL_OPERATORS,
+  taxRate: TAX_RATE,
+  capexCosts: CAPEX_COSTS,
+  monthlyLicenseBase: MONTHLY_LICENSE_BASE,
+  maintenanceEquipment: MAINTENANCE_EQUIPMENT,
+  selfCheckoutLicenseEach: SELF_CHECKOUT_LICENSE_EACH,
+  salarySales: SALARY_SALES,
+  salaryService: SALARY_SERVICE,
+  roundDemandBase: ROUND_DEMAND_BASE,
+  agingRate: AGING_RATE,
+  breakageRate: BREAKAGE_RATE,
+};

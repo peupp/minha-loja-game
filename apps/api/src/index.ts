@@ -12,12 +12,13 @@ import {
   publicSession,
   submitPlan,
   submittedCount,
+  updateGameConfig,
   updatePlan,
   verifyFacilitator,
   verifyStore,
 } from "./store";
-import type { StorePlan } from "@minha-loja/shared-types";
-import { CATEGORIES, INITIAL_CASH, CAPEX_COSTS } from "@minha-loja/game-engine";
+import type { GameConfig, StorePlan } from "@minha-loja/shared-types";
+import { CATEGORIES, INITIAL_CASH, CAPEX_COSTS, DEFAULT_GAME_CONFIG } from "@minha-loja/game-engine";
 import { prisma } from "./prisma";
 
 const PORT = Number(process.env.PORT) || 3001;
@@ -46,7 +47,12 @@ app.get("/api/health", async (_req, res) => {
 });
 
 app.get("/api/params", (_req, res) => {
-  res.json({ categories: CATEGORIES, initialCash: INITIAL_CASH, capexCosts: CAPEX_COSTS });
+  res.json({
+    categories: CATEGORIES,
+    initialCash: INITIAL_CASH,
+    capexCosts: CAPEX_COSTS,
+    defaultGameConfig: DEFAULT_GAME_CONFIG,
+  });
 });
 
 app.post("/api/sessions", async (_req, res) => {
@@ -68,6 +74,22 @@ app.get("/api/sessions/:id", async (req, res) => {
   const s = await getSession(req.params.id);
   if (!s) return res.status(404).json({ error: "Sessão não encontrada" });
   res.json(publicSession(s));
+});
+
+app.put("/api/sessions/:sessionId/config", async (req, res) => {
+  const token = req.headers["x-facilitator-token"] as string;
+  const s = await verifyFacilitator(req.params.sessionId, token);
+  if (!s) return res.status(403).json({ error: "Facilitador não autorizado" });
+
+  try {
+    const updated = await updateGameConfig(req.params.sessionId, req.body as GameConfig);
+    if (!updated) return res.status(404).json({ error: "Sessão não encontrada" });
+    await emitSession(updated.id);
+    res.json(publicSession(updated));
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Erro ao salvar configuração";
+    res.status(400).json({ error: message });
+  }
 });
 
 app.get("/api/sessions/pin/:pin", async (req, res) => {

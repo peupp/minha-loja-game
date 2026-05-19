@@ -40,6 +40,7 @@ export default function FacilitatorPage() {
   const submitted = session.stores.filter((s) => s.planSubmitted).length;
   const phase = session.phase as GamePhase;
   const canAdvance = phase !== "FINAL";
+  const setupUrl = `/facilitador/configuracao?session=${sessionId}&token=${token}`;
 
   return (
     <div className="page">
@@ -50,10 +51,21 @@ export default function FacilitatorPage() {
         <p className="muted">PIN para as empresas</p>
         <p className="pin-display">{session.pin}</p>
         <div className="facilitator-links">
+          <Link to={setupUrl}>Configuração inicial</Link>
           <Link to={`/telao?session=${sessionId}`}>Telão (ranking Kahoot)</Link>
           <Link to={`/ranking?session=${sessionId}`}>Ranking em tela cheia</Link>
         </div>
       </div>
+
+      {phase === "LOBBY" && (
+        <div className="phase-banner">
+          Revise a configuração inicial antes de avançar para a primeira rodada.
+          <p className="hint">
+            Caixa inicial: R$ {session.gameConfig.initialCash.toLocaleString("pt-BR")} · Demanda
+            base: R$ {session.gameConfig.roundDemandBase.toLocaleString("pt-BR")}
+          </p>
+        </div>
+      )}
 
       <div className="phase-banner">
         <strong>Fase atual:</strong> {PHASE_LABELS[phase]}

@@ -21,7 +21,7 @@ export default function Home() {
         `facilitator:${data.sessionId}`,
         data.facilitatorToken
       );
-      window.location.href = `/facilitador?session=${data.sessionId}&token=${data.facilitatorToken}`;
+      window.location.href = `/facilitador/configuracao?session=${data.sessionId}&token=${data.facilitatorToken}`;
     } catch {
       setError("Não foi possível criar a sessão. Verifique se a API está rodando.");
     } finally {
