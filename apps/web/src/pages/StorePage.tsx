@@ -150,7 +150,14 @@ export default function StorePage() {
           <PlanEditor
             plan={plan}
             onChange={setPlan}
-            params={params}
+            params={{
+              ...params,
+              initialCash:
+                session.phase === "CONFIG_2" && myResult
+                  ? myResult.cashRemaining
+                  : params.initialCash,
+            }}
+            includeCapexInBudget={session.phase === "CONFIG_1"}
             sessionId={sessionId}
           />
           <div className="actions">

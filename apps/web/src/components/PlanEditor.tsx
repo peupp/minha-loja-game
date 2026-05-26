@@ -13,6 +13,7 @@ interface Props {
   plan: StorePlan;
   onChange: (plan: StorePlan) => void;
   params: Params;
+  includeCapexInBudget?: boolean;
   readOnly?: boolean;
   sessionId?: string;
 }
@@ -21,6 +22,7 @@ export default function PlanEditor({
   plan,
   onChange,
   params,
+  includeCapexInBudget = true,
   readOnly,
   sessionId,
 }: Props) {
@@ -30,6 +32,23 @@ export default function PlanEditor({
     plan.quizTotal
   );
   const quizDone = plan.quizTotal > 0;
+  const inventoryCost = plan.categories.reduce((total, cat) => {
+    const meta = params.categories.find((c) => c.id === cat.categoryId);
+    return total + (meta?.unitCost ?? 0) * cat.quantity;
+  }, 0);
+  const capexCost = includeCapexInBudget
+    ? plan.capex.reduce(
+        (total, item) =>
+          item.approved ? total + (params.capexCosts[item.type] ?? 0) : total,
+        0
+      )
+    : 0;
+  const cashRemaining = params.initialCash - inventoryCost - capexCost;
+  const moneyFormat = new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  });
 
   const toggleCapex = (type: CapexType) => {
     if (readOnly) return;
@@ -57,6 +76,21 @@ export default function PlanEditor({
 
   return (
     <div className="plan-editor">
+      <section
+        className={`cash-highlight ${cashRemaining < 0 ? "cash-highlight--negative" : ""}`}
+        aria-live="polite"
+      >
+        <div>
+          <span className="cash-highlight-label">Dinheiro restante</span>
+          <strong>{moneyFormat.format(cashRemaining)}</strong>
+        </div>
+        <div className="cash-highlight-breakdown">
+          <span>Inicial: {moneyFormat.format(params.initialCash)}</span>
+          <span>Estoque: {moneyFormat.format(inventoryCost)}</span>
+          {includeCapexInBudget && <span>CAPEX: {moneyFormat.format(capexCost)}</span>}
+        </div>
+      </section>
+
       <section className="card mb-1 card-csat">
         <h3 className="section-title">CSAT — nível de serviço</h3>
         <p className="small-note mb-1">
