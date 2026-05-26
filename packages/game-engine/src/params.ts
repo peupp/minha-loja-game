@@ -34,6 +34,8 @@ export const AGING_RATE = 0.15;
 export const BREAKAGE_RATE = 0.08;
 
 export const DEFAULT_GAME_CONFIG: GameConfig = {
+  roundsCount: 3,
+  questionCount: 5,
   categories: CATEGORIES,
   initialCash: INITIAL_CASH,
   interestRateMonth: INTEREST_RATE_MONTH,

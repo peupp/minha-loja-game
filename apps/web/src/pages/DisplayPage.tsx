@@ -9,49 +9,28 @@ export default function DisplayPage() {
   const { session, loading } = useSession(sessionId);
 
   if (!sessionId) {
-    return <div className="kahoot-screen">Sessão inválida</div>;
+    return <div className="kahoot-screen">Sessao invalida</div>;
   }
 
   if (loading || !session) {
     return (
       <div className="kahoot-screen kahoot-screen--loading">
-        <p className="pin-display kahoot-pin">···</p>
+        <p className="pin-display kahoot-pin">...</p>
       </div>
     );
   }
 
-  const isFinal = session.finalRanking.length > 0;
-  const lastRound = session.roundResults[session.roundResults.length - 1];
-  const showKahoot = isFinal || !!lastRound;
-
-  if (showKahoot) {
-    if (isFinal) {
-      return (
-        <KahootRanking
-          title="🏆 Campeões"
-          subtitle={`PIN ${session.pin} · ${PHASE_LABELS[session.phase]}`}
-          entries={session.finalRanking.map((r) => ({
-            id: r.storeId,
-            name: r.companyName,
-            score: r.ebitdaPercent,
-          }))}
-          valueSuffix="% EBITDA"
-          showPodium
-        />
-      );
-    }
+  if (session.phase === "FINAL" && session.finalRanking.length > 0) {
     return (
       <KahootRanking
-        title={`Rodada ${lastRound!.round}`}
-        subtitle={`PIN ${session.pin} · Quem lidera a demanda?`}
-        entries={[...lastRound!.stores]
-          .sort((a, b) => b.demandShare - a.demandShare)
-          .map((r) => ({
-            id: r.storeId,
-            name: r.companyName,
-            score: r.demandShare,
-          }))}
-        valueSuffix="% demanda"
+        title="Campeoes"
+        subtitle={`PIN ${session.pin} - ${PHASE_LABELS[session.phase]}`}
+        entries={session.finalRanking.map((r) => ({
+          id: r.storeId,
+          name: r.companyName,
+          score: r.ebitdaPercent,
+        }))}
+        valueSuffix="% EBITDA"
         showPodium
       />
     );
@@ -71,16 +50,16 @@ export default function DisplayPage() {
             <li key={s.id} style={{ animationDelay: `${i * 120}ms` }}>
               <span className="kahoot-lobby-rank">{i + 1}</span>
               {s.companyName}
-              <span className="kahoot-lobby-status">{s.planSubmitted ? "✓" : "…"}</span>
+              <span className="kahoot-lobby-status">{s.planSubmitted ? "OK" : "..."}</span>
             </li>
           ))}
         </ul>
         {session.stores.length === 0 && (
-          <p className="kahoot-empty">Aguardando empresas entrarem com o PIN…</p>
+          <p className="kahoot-empty">Aguardando empresas entrarem com o PIN...</p>
         )}
       </div>
       <p className="kahoot-lobby-footer">
-        <Link to={`/ranking?session=${sessionId}`}>Tela de ranking →</Link>
+        <Link to={`/ranking?session=${sessionId}`}>Ranking final</Link>
       </p>
     </div>
   );

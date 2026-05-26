@@ -18,9 +18,11 @@ const moneyFields: { key: keyof GameConfig; label: string }[] = [
 const rateFields: { key: keyof GameConfig; label: string; scale?: number }[] = [
   { key: "interestRateMonth", label: "Juros sobre caixa negativo", scale: 100 },
   { key: "taxRate", label: "Imposto sobre receita", scale: 100 },
-  { key: "agingRate", label: "Envelhecimento de estoque", scale: 100 },
-  { key: "breakageRate", label: "Quebra/perda operacional", scale: 100 },
   { key: "idealOperators", label: "Operadores ideais para CSAT" },
+];
+
+const gameFields: { key: keyof GameConfig; label: string; min: number; max?: number }[] = [
+  { key: "questionCount", label: "Perguntas presenciais de CSAT", min: 1 },
 ];
 
 const capexTypes = Object.keys(CAPEX_LABELS) as CapexType[];
@@ -167,7 +169,43 @@ export default function FacilitatorSetupPage() {
       )}
 
       <section className="card mb-1">
+        <h3 className="section-title">Formato da partida</h3>
+        <div className="round-count-control">
+          <label>Quantidade de rodadas</label>
+          <input
+            type="number"
+            min={1}
+            step={1}
+            value={numberValue(draft.roundsCount)}
+            disabled={!canEdit}
+            onChange={(e) =>
+              updateNumber("roundsCount", Math.max(1, Math.floor(Number(e.target.value) || 1)))
+            }
+          />
+        </div>
+        <p className="small-note">
+          O jogo encerra automaticamente ao final da quantidade escolhida e o ranking aparece
+          apenas no final.
+        </p>
+      </section>
+
+      <section className="card mb-1">
         <h3 className="section-title">Economia do jogo</h3>
+        <div className="config-grid mb-1">
+          {gameFields.map((field) => (
+            <div className="form-group" key={field.key}>
+              <label>{field.label}</label>
+              <input
+                type="number"
+                min={field.min}
+                max={field.max}
+                value={numberValue(draft[field.key])}
+                disabled={!canEdit}
+                onChange={(e) => updateNumber(field.key, Number(e.target.value))}
+              />
+            </div>
+          ))}
+        </div>
         <div className="config-grid">
           {moneyFields.map((field) => (
             <div className="form-group" key={field.key}>

@@ -22,9 +22,12 @@ function rankScores(values: { id: string; value: number }[], higherIsBetter: boo
   );
   const n = sorted.length;
   const points = n <= 1 ? [4] : n === 2 ? [4, 1] : n === 3 ? [4, 2, 1] : [4, 3, 2, 1];
-  const map = new Map<string, number>();
+  const map = new Map<string, { rank: number; points: number }>();
   sorted.forEach((item, i) => {
-    map.set(item.id, points[Math.min(i, points.length - 1)]);
+    map.set(item.id, {
+      rank: i + 1,
+      points: points[Math.min(i, points.length - 1)],
+    });
   });
   return map;
 }
@@ -57,19 +60,24 @@ function calcAvailability(plan: StorePlan, config: GameConfig): number {
 function calcCsat(plan: StorePlan, config: GameConfig): number {
   const opsRatio = Math.min(plan.operatorsSales / config.idealOperators, 1);
   const quizRatio =
-    plan.quizTotal > 0 ? plan.quizCorrect / plan.quizTotal : 0;
+    config.questionCount > 0 ? plan.quizCorrect / config.questionCount : 0;
   return opsRatio * quizRatio * 100;
 }
 
 function planSpend(plan: StorePlan, config: GameConfig): {
   inventoryCost: number;
+  inventoryByCategory: Record<string, number>;
   capexCost: number;
   monthlyFixed: number;
 } {
   let inventoryCost = 0;
+  const inventoryByCategory: Record<string, number> = {};
   for (const cat of plan.categories) {
     const meta = config.categories.find((c) => c.id === cat.categoryId);
-    if (meta) inventoryCost += meta.unitCost * cat.quantity;
+    if (meta) {
+      inventoryCost += meta.unitCost * cat.quantity;
+      inventoryByCategory[cat.categoryId] = cat.quantity;
+    }
   }
 
   let capexCost = 0;
@@ -97,7 +105,7 @@ function planSpend(plan: StorePlan, config: GameConfig): {
     plan.operatorsSales * config.salarySales +
     plan.operatorsService * config.salaryService;
 
-  return { inventoryCost, capexCost, monthlyFixed };
+  return { inventoryCost, inventoryByCategory, capexCost, monthlyFixed };
 }
 
 export function simulateRound(
@@ -127,9 +135,9 @@ export function simulateRound(
 
   const totalRankPoints = stores.map((s) => {
     const pts =
-      (priceRanks.get(s.storeId) ?? 1) +
-      (availRanks.get(s.storeId) ?? 1) +
-      (csatRanks.get(s.storeId) ?? 1);
+      (priceRanks.get(s.storeId)?.points ?? 1) +
+      (availRanks.get(s.storeId)?.points ?? 1) +
+      (csatRanks.get(s.storeId)?.points ?? 1);
     return { id: s.storeId, pts };
   });
 
@@ -137,13 +145,14 @@ export function simulateRound(
 
   return stores.map((store) => {
     const rankScore =
-      (priceRanks.get(store.storeId) ?? 1) +
-      (availRanks.get(store.storeId) ?? 1) +
-      (csatRanks.get(store.storeId) ?? 1);
+      (priceRanks.get(store.storeId)?.points ?? 1) +
+      (availRanks.get(store.storeId)?.points ?? 1) +
+      (csatRanks.get(store.storeId)?.points ?? 1);
     const demandShare = rankScore / sumPts;
     const revenue = totalDemand * demandShare;
 
-    const { inventoryCost, capexCost, monthlyFixed } = planSpend(store.plan, config);
+    const { inventoryCost, inventoryByCategory, capexCost, monthlyFixed } =
+      planSpend(store.plan, config);
     const spend =
       store.configRound === 1 ? inventoryCost + capexCost : inventoryCost;
     let cash =
@@ -151,9 +160,9 @@ export function simulateRound(
         ? config.initialCash - spend
         : (store.previousCash ?? config.initialCash) - spend;
 
-    if (cash < 0) {
-      cash -= Math.abs(cash) * config.interestRateMonth;
-    }
+    const negativeCashInterest =
+      cash < 0 ? Math.abs(cash) * config.interestRateMonth : 0;
+    cash -= negativeCashInterest;
 
     const cogs = inventoryCost * demandShare * 0.85;
     const taxes = revenue * config.taxRate;
@@ -167,6 +176,19 @@ export function simulateRound(
       basketPrice: calcBasketPrice(store.plan, config),
       availability: calcAvailability(store.plan, config),
       csat: calcCsat(store.plan, config),
+      priceScore: priceRanks.get(store.storeId)?.points ?? 1,
+      availabilityScore: availRanks.get(store.storeId)?.points ?? 1,
+      csatScore: csatRanks.get(store.storeId)?.points ?? 1,
+      totalRankPoints: rankScore,
+      totalMarketPoints: sumPts,
+      inventoryByCategory,
+      inventoryCost,
+      capexCost,
+      spend,
+      monthlyFixed,
+      negativeCashInterest,
+      cogs,
+      taxes,
       rankScore,
       demandShare: demandShare * 100,
       revenue,
@@ -180,7 +202,13 @@ export function simulateRound(
 
 export function finalizeGame(
   roundResults: RoundStoreResult[][]
-): { storeId: string; companyName: string; ebitdaPercent: number }[] {
+): {
+  storeId: string;
+  companyName: string;
+  ebitda: number;
+  revenue: number;
+  ebitdaPercent: number;
+}[] {
   const totals = new Map<string, { name: string; ebitda: number; revenue: number }>();
 
   for (const round of roundResults) {
@@ -200,6 +228,8 @@ export function finalizeGame(
     .map(([storeId, t]) => ({
       storeId,
       companyName: t.name,
+      ebitda: t.ebitda,
+      revenue: t.revenue,
       ebitdaPercent: t.revenue > 0 ? (t.ebitda / t.revenue) * 100 : 0,
     }))
     .sort((a, b) => b.ebitdaPercent - a.ebitdaPercent);

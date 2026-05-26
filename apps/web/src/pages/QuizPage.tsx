@@ -1,18 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import type { StorePlan } from "@minha-loja/shared-types";
-import { QUIZ_QUESTIONS, QUIZ_TOTAL } from "../data/quizQuestions";
 import { savePlan } from "../api";
 import { csatBreakdown } from "../utils/csat";
 import { useSession } from "../hooks/useSession";
-
-const OPTION_SHAPES = ["▲", "◆", "●", "■"];
-const OPTION_CLASSES = [
-  "kahoot-opt kahoot-opt--red",
-  "kahoot-opt kahoot-opt--blue",
-  "kahoot-opt kahoot-opt--yellow",
-  "kahoot-opt kahoot-opt--green",
-];
 
 interface StoreCred {
   storeId: string;
@@ -27,10 +18,6 @@ export default function QuizPage() {
   const { session } = useSession(sessionId);
   const [cred, setCred] = useState<StoreCred | null>(null);
   const [plan, setPlan] = useState<StorePlan | null>(null);
-  const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<number[]>([]);
-  const [selected, setSelected] = useState<number | null>(null);
-  const [done, setDone] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -51,142 +38,122 @@ export default function QuizPage() {
       .catch(() => {});
   }, [sessionId, cred]);
 
-  const current = QUIZ_QUESTIONS[step];
+  const questionCount = Math.max(session?.gameConfig.questionCount ?? 1, 1);
+  const answered = plan?.quizTotal ?? 0;
+  const correct = plan?.quizCorrect ?? 0;
+  const finished = answered >= questionCount;
 
-  const finishQuiz = async (allAnswers: number[]) => {
-    if (!sessionId || !cred || !plan) return;
-    const correct = allAnswers.filter(
-      (a, i) => a === QUIZ_QUESTIONS[i].correctIndex
-    ).length;
+  const recordAnswer = async (isCorrect: boolean) => {
+    if (!sessionId || !cred || !plan || finished) return;
     const updated: StorePlan = {
       ...plan,
-      quizCorrect: correct,
-      quizTotal: QUIZ_TOTAL,
+      quizCorrect: correct + (isCorrect ? 1 : 0),
+      quizTotal: answered + 1,
     };
     setSaving(true);
     try {
       await savePlan(sessionId, cred.storeId, cred.storeToken, updated);
       setPlan(updated);
-      setDone(true);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleAnswer = (optionIndex: number) => {
-    if (selected !== null || !current) return;
-    setSelected(optionIndex);
-    const nextAnswers = [...answers, optionIndex];
-    setTimeout(() => {
-      if (step + 1 >= QUIZ_QUESTIONS.length) {
-        finishQuiz(nextAnswers);
-      } else {
-        setAnswers(nextAnswers);
-        setStep(step + 1);
-        setSelected(null);
-      }
-    }, 700);
+  const resetAnswers = async () => {
+    if (!sessionId || !cred || !plan) return;
+    const updated: StorePlan = { ...plan, quizCorrect: 0, quizTotal: 0 };
+    setSaving(true);
+    try {
+      await savePlan(sessionId, cred.storeId, cred.storeToken, updated);
+      setPlan(updated);
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!sessionId || !cred) {
     return (
       <div className="page-narrow">
-        <p>Entre na sessão primeiro.</p>
+        <p>Entre na sessao primeiro.</p>
         <Link to="/entrar">Entrar no jogo</Link>
       </div>
     );
   }
 
-  if (done && plan) {
-    const { opsPercent, quizPercent, csat } = csatBreakdown(
-      plan.operatorsSales,
-      plan.quizCorrect,
-      plan.quizTotal,
-      session?.gameConfig.idealOperators
-    );
-    const idealOperators = session?.gameConfig.idealOperators ?? 10;
-    return (
-      <div className="kahoot-quiz-screen">
-        <div className="kahoot-quiz-result">
-          <p className="kahoot-brand">Questionário concluído</p>
-          <h1 className="kahoot-quiz-score">
-            {plan.quizCorrect}/{plan.quizTotal}
-          </h1>
-          <p className="kahoot-quiz-score-label">respostas corretas</p>
-
-          <div className="csat-breakdown">
-            <div className="csat-row">
-              <span>Operadores ({plan.operatorsSales} / {idealOperators} ideal)</span>
-              <strong>{opsPercent.toFixed(0)}%</strong>
-            </div>
-            <div className="csat-row">
-              <span>Questionário ({plan.quizCorrect}/{plan.quizTotal})</span>
-              <strong>{quizPercent.toFixed(0)}%</strong>
-            </div>
-            <div className="csat-row csat-row--total">
-              <span>CSAT da loja</span>
-              <strong>{csat.toFixed(1)}%</strong>
-            </div>
-            <p className="csat-formula">
-              {opsPercent.toFixed(0)}% × {quizPercent.toFixed(0)}% = {csat.toFixed(1)}% CSAT
-            </p>
-          </div>
-
-          <div className="kahoot-quiz-actions">
-            <Link to={`/loja?session=${sessionId}`}>
-              <button className="btn-primary btn-block">Voltar ao plano da loja</button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
+  if (!plan) {
+    return <div className="page">Carregando registro de CSAT...</div>;
   }
 
-  if (!plan || !current) {
-    return <div className="kahoot-quiz-screen">Carregando quiz…</div>;
-  }
+  const { opsPercent, quizPercent, csat } = csatBreakdown(
+    plan.operatorsSales,
+    plan.quizCorrect,
+    questionCount,
+    session?.gameConfig.idealOperators
+  );
+  const idealOperators = session?.gameConfig.idealOperators ?? 10;
 
   return (
-    <div className="kahoot-quiz-screen">
-      <div className="kahoot-quiz-top">
-        <span>{cred.companyName}</span>
-        <span>
-          {step + 1} / {QUIZ_TOTAL}
-        </span>
-      </div>
-
-      <div className="kahoot-quiz-question-wrap">
-        <h1 className="kahoot-quiz-question">{current.question}</h1>
-      </div>
-
-      <div className="kahoot-quiz-options">
-        {current.options.map((opt, i) => (
-          <button
-            key={i}
-            type="button"
-            className={`${OPTION_CLASSES[i]} ${selected === i ? "kahoot-opt--picked" : ""} ${
-              selected !== null && i === current.correctIndex ? "kahoot-opt--correct" : ""
-            } ${
-              selected !== null &&
-              selected === i &&
-              i !== current.correctIndex
-                ? "kahoot-opt--wrong"
-                : ""
-            }`}
-            disabled={selected !== null || saving}
-            onClick={() => handleAnswer(i)}
-          >
-            <span className="kahoot-opt-shape">{OPTION_SHAPES[i]}</span>
-            <span>{opt}</span>
-          </button>
-        ))}
-      </div>
-
-      <p className="kahoot-quiz-hint">
-        <Link to={`/loja?session=${sessionId}`} className="kahoot-quiz-back">
-          ← Plano da loja
-        </Link>
+    <div className="page-narrow">
+      <Link to={`/loja?session=${sessionId}`} className="back-link">
+        Voltar ao plano
+      </Link>
+      <h1 className="mt-1">Registro de CSAT</h1>
+      <p className="subtitle">
+        Marque o resultado da pergunta feita presencialmente pelo facilitador.
       </p>
+
+      <section className="card mb-1">
+        <div className="csat-register-head">
+          <span>Pergunta {Math.min(answered + 1, questionCount)} de {questionCount}</span>
+          <strong>{correct}/{questionCount}</strong>
+        </div>
+
+        <div className="actions">
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={saving || finished}
+            onClick={() => recordAnswer(true)}
+          >
+            Acertou
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={saving || finished}
+            onClick={() => recordAnswer(false)}
+          >
+            Errou
+          </button>
+        </div>
+
+        {finished && <p className="status-success">Perguntas finalizadas.</p>}
+      </section>
+
+      <section className="card mb-1">
+        <h3 className="section-title">Calculo do CSAT</h3>
+        <div className="csat-breakdown csat-breakdown--light">
+          <div className="csat-row">
+            <span>Operadores ({plan.operatorsSales} / {idealOperators} ideal)</span>
+            <strong>{opsPercent.toFixed(0)}%</strong>
+          </div>
+          <div className="csat-row">
+            <span>Perguntas corretas ({correct}/{questionCount})</span>
+            <strong>{quizPercent.toFixed(0)}%</strong>
+          </div>
+          <div className="csat-row csat-row--total">
+            <span>CSAT</span>
+            <strong>{csat.toFixed(1)}%</strong>
+          </div>
+        </div>
+        <p className="small-note">
+          Formula: operadores / ideal x acertos / perguntas = CSAT.
+        </p>
+      </section>
+
+      <button type="button" className="btn-secondary btn-block" disabled={saving} onClick={resetAnswers}>
+        Reiniciar respostas
+      </button>
     </div>
   );
 }

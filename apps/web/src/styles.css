@@ -158,6 +158,16 @@ h1 {
   .grid-2 {
     grid-template-columns: 1fr;
   }
+
+  .cash-highlight {
+    position: static;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .cash-highlight-breakdown {
+    justify-content: flex-start;
+  }
 }
 
 .badge {
@@ -213,6 +223,59 @@ th {
 .capex-grid {
   display: grid;
   gap: 0.5rem;
+}
+
+.cash-highlight {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 1rem 1.15rem;
+  color: var(--white);
+  background: linear-gradient(135deg, var(--orange), var(--amber));
+  border-radius: 14px;
+  box-shadow: 0 14px 30px rgba(236, 99, 13, 0.28);
+}
+
+.cash-highlight--negative {
+  background: linear-gradient(135deg, #b42318, var(--orange));
+}
+
+.cash-highlight-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.9;
+}
+
+.cash-highlight strong {
+  display: block;
+  margin-top: 0.12rem;
+  font-size: clamp(1.55rem, 4vw, 2.35rem);
+  line-height: 1;
+}
+
+.cash-highlight-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  max-width: 360px;
+}
+
+.cash-highlight-breakdown span {
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .capex-item {
@@ -515,6 +578,17 @@ th {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
+}
+
+.round-count-control {
+  max-width: 260px;
+}
+
+.round-count-control input {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--orange);
+  text-align: center;
 }
 
 .setup-section-heading {
@@ -960,6 +1034,20 @@ th {
   padding: 1.25rem;
   text-align: left;
   margin-bottom: 1.5rem;
+}
+
+.csat-breakdown--light {
+  background: rgba(9, 188, 249, 0.08);
+  color: var(--text);
+}
+
+.csat-register-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  font-weight: 700;
+  font-size: 1.1rem;
 }
 
 .csat-row {

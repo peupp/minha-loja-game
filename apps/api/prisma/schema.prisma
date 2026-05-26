@@ -68,6 +68,8 @@ model FinalRanking {
   session       Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   storeId       String
   companyName   String
+  ebitda        Float   @default(0)
+  revenue       Float   @default(0)
   ebitdaPercent Float
   position      Int
 

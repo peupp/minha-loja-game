@@ -44,6 +44,8 @@ export interface ProductCategory {
 }
 
 export interface GameConfig {
+  roundsCount: number;
+  questionCount: number;
   categories: ProductCategory[];
   initialCash: number;
   interestRateMonth: number;
@@ -75,6 +77,19 @@ export interface RoundStoreResult {
   basketPrice: number;
   availability: number;
   csat: number;
+  priceScore: number;
+  availabilityScore: number;
+  csatScore: number;
+  totalRankPoints: number;
+  totalMarketPoints: number;
+  inventoryByCategory: Record<string, number>;
+  inventoryCost: number;
+  capexCost: number;
+  spend: number;
+  monthlyFixed: number;
+  negativeCashInterest: number;
+  cogs: number;
+  taxes: number;
   rankScore: number;
   demandShare: number;
   revenue: number;
@@ -98,7 +113,13 @@ export interface SessionState {
   gameConfig: GameConfig;
   stores: Store[];
   roundResults: RoundResult[];
-  finalRanking: { storeId: string; companyName: string; ebitdaPercent: number }[];
+  finalRanking: {
+    storeId: string;
+    companyName: string;
+    ebitda: number;
+    revenue: number;
+    ebitdaPercent: number;
+  }[];
   createdAt: string;
 }
 

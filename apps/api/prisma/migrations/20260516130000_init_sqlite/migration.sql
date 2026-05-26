@@ -15,8 +15,8 @@ CREATE TABLE "Store" (
     "companyName" TEXT NOT NULL,
     "playerName" TEXT NOT NULL,
     "storeToken" TEXT NOT NULL,
-    "planDraft" JSON,
-    "planSubmitted" JSON,
+    "planDraft" TEXT,
+    "planSubmitted" TEXT,
     "cashRemaining" REAL,
     "connected" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -29,7 +29,7 @@ CREATE TABLE "RoundResult" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "sessionId" TEXT NOT NULL,
     "round" INTEGER NOT NULL,
-    "results" JSON NOT NULL,
+    "results" TEXT NOT NULL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "RoundResult_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "Session" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );

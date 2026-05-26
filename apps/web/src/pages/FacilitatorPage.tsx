@@ -53,7 +53,7 @@ export default function FacilitatorPage() {
         <div className="facilitator-links">
           <Link to={setupUrl}>Configuração inicial</Link>
           <Link to={`/telao?session=${sessionId}`}>Telão (ranking Kahoot)</Link>
-          <Link to={`/ranking?session=${sessionId}`}>Ranking em tela cheia</Link>
+          <Link to={`/ranking?session=${sessionId}`}>Ranking final</Link>
         </div>
       </div>
 
@@ -161,3 +161,4 @@ export default function FacilitatorPage() {
     </div>
   );
 }
+

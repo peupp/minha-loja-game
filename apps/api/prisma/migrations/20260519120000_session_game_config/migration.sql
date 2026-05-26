@@ -1,1 +1,1 @@
-ALTER TABLE "Session" ADD COLUMN "gameConfig" JSON;
+ALTER TABLE "Session" ADD COLUMN "gameConfig" TEXT;

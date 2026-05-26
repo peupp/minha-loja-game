@@ -86,6 +86,22 @@ function syncPlanCategories(plan: StorePlan, config: GameConfig): StorePlan {
   };
 }
 
+function remainingCategories(config: GameConfig, rounds: RoundResult[]): GameConfig["categories"] {
+  const consumed = new Map<string, number>();
+  for (const round of rounds) {
+    for (const store of round.stores) {
+      for (const [categoryId, quantity] of Object.entries(store.inventoryByCategory ?? {})) {
+        consumed.set(categoryId, (consumed.get(categoryId) ?? 0) + quantity);
+      }
+    }
+  }
+
+  return config.categories.map((category) => ({
+    ...category,
+    maxAvailable: Math.max(0, category.maxAvailable - (consumed.get(category.id) ?? 0)),
+  }));
+}
+
 type SessionWithRelations = Prisma.SessionGetPayload<{
   include: { stores: true; roundResults: true; finalRankings: true };
 }>;
@@ -121,6 +137,8 @@ function mapSession(row: SessionWithRelations): SessionState {
       .map((f) => ({
         storeId: f.storeId,
         companyName: f.companyName,
+        ebitda: f.ebitda,
+        revenue: f.revenue,
         ebitdaPercent: f.ebitdaPercent,
       })),
     createdAt: row.createdAt.toISOString(),
@@ -291,8 +309,23 @@ export async function updatePlan(
 ): Promise<Store | null> {
   const store = await prisma.store.findFirst({ where: { id: storeId, sessionId } });
   if (!store) return null;
+  const session = await loadSession(sessionId);
+  if (!session) return null;
 
-  const enriched = enrichPlan(plan);
+  const available = new Map(
+    remainingCategories(session.gameConfig, session.roundResults).map((category) => [
+      category.id,
+      category.maxAvailable,
+    ])
+  );
+  const cappedPlan: StorePlan = {
+    ...plan,
+    categories: plan.categories.map((category) => ({
+      ...category,
+      quantity: Math.min(category.quantity, available.get(category.categoryId) ?? category.quantity),
+    })),
+  };
+  const enriched = enrichPlan(cappedPlan);
   const row = await prisma.store.update({
     where: { id: storeId },
     data: { planDraft: toJson(enriched) },
@@ -334,10 +367,19 @@ export async function advancePhase(sessionId: string): Promise<SessionState | nu
   const session = await loadSession(sessionId);
   if (!session) return null;
 
-  const idx = PHASE_ORDER.indexOf(session.phase);
-  if (idx < 0 || idx >= PHASE_ORDER.length - 1) return session;
+  const roundsCount = Math.max(Math.floor(session.gameConfig.roundsCount ?? 3), 1);
+  const nextRound = session.currentRound + 1;
+  let next: GamePhase;
 
-  const next = PHASE_ORDER[idx + 1];
+  if (session.phase === "LOBBY") next = "CONFIG_1";
+  else if (session.phase === "CONFIG_1") next = "ROUND_1";
+  else if (session.phase === "ROUND_1" || session.phase === "ROUND_2") {
+    next = session.currentRound >= roundsCount ? "FINAL" : "CONFIG_2";
+  } else if (session.phase === "CONFIG_2") {
+    next = nextRound <= roundsCount ? "ROUND_2" : "FINAL";
+  } else {
+    return session;
+  }
 
   if (next === "CONFIG_1" || next === "CONFIG_2") {
     await prisma.store.updateMany({
@@ -346,8 +388,10 @@ export async function advancePhase(sessionId: string): Promise<SessionState | nu
     });
   }
 
-  if (next === "ROUND_1" || next === "ROUND_2" || next === "ROUND_3") {
-    const roundNum = next === "ROUND_1" ? 1 : next === "ROUND_2" ? 2 : 3;
+  let completedRound: number | undefined;
+  if (next === "ROUND_1" || next === "ROUND_2") {
+    const roundNum = next === "ROUND_1" ? 1 : nextRound;
+    completedRound = roundNum;
     await runRound(sessionId, session, roundNum);
   }
 
@@ -362,6 +406,8 @@ export async function advancePhase(sessionId: string): Promise<SessionState | nu
             sessionId,
             storeId: r.storeId,
             companyName: r.companyName,
+            ebitda: r.ebitda,
+            revenue: r.revenue,
             ebitdaPercent: r.ebitdaPercent,
             position: i + 1,
           })),
@@ -373,9 +419,7 @@ export async function advancePhase(sessionId: string): Promise<SessionState | nu
   const sessionUpdate: { phase: PrismaPhase; currentRound?: number } = {
     phase: next as PrismaPhase,
   };
-  if (next === "ROUND_1") sessionUpdate.currentRound = 1;
-  else if (next === "ROUND_2") sessionUpdate.currentRound = 2;
-  else if (next === "ROUND_3") sessionUpdate.currentRound = 3;
+  if (completedRound) sessionUpdate.currentRound = completedRound;
 
   await prisma.session.update({
     where: { id: sessionId },
@@ -388,6 +432,10 @@ export async function advancePhase(sessionId: string): Promise<SessionState | nu
 async function runRound(sessionId: string, session: SessionState, roundNum: number) {
   const configRound: 1 | 2 = roundNum === 1 ? 1 : 2;
   const activeStores = session.stores.filter((st) => st.planSubmitted);
+  const roundConfig: GameConfig = {
+    ...session.gameConfig,
+    categories: remainingCategories(session.gameConfig, session.roundResults),
+  };
 
   const cashRows = await prisma.store.findMany({
     where: { sessionId, id: { in: activeStores.map((s) => s.id) } },
@@ -408,7 +456,7 @@ async function runRound(sessionId: string, session: SessionState, roundNum: numb
     inputs,
     roundNum,
     session.gameConfig.roundDemandBase * demandMultiplier,
-    session.gameConfig
+    roundConfig
   );
 
   for (const r of results) {

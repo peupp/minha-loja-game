@@ -9,64 +9,41 @@ export default function RankingPage() {
   const { session, loading } = useSession(sessionId);
 
   if (!sessionId) {
-    return <div className="kahoot-screen">Sessão inválida</div>;
+    return <div className="kahoot-screen">Sessao invalida</div>;
   }
 
   if (loading || !session) {
     return (
       <div className="kahoot-screen kahoot-screen--loading">
-        <p className="kahoot-title">Carregando ranking…</p>
+        <p className="kahoot-title">Carregando ranking...</p>
       </div>
     );
   }
 
-  const isFinal = session.finalRanking.length > 0;
-  const lastRound = session.roundResults[session.roundResults.length - 1];
-
-  if (isFinal) {
+  if (session.phase !== "FINAL" || session.finalRanking.length === 0) {
     return (
-      <KahootRanking
-        title="🏆 Ranking final"
-        subtitle={`${PHASE_LABELS[session.phase]} · PIN ${session.pin}`}
-        entries={session.finalRanking.map((r) => ({
-          id: r.storeId,
-          name: r.companyName,
-          score: r.ebitdaPercent,
-        }))}
-        valueSuffix="% EBITDA"
-        showPodium
-      />
-    );
-  }
-
-  if (lastRound) {
-    return (
-      <KahootRanking
-        title={`Rodada ${lastRound.round}`}
-        subtitle="Participação na demanda de vendas"
-        entries={[...lastRound.stores]
-          .sort((a, b) => b.demandShare - a.demandShare)
-          .map((r) => ({
-            id: r.storeId,
-            name: r.companyName,
-            score: r.demandShare,
-          }))}
-        valueSuffix="% demanda"
-        showPodium={lastRound.stores.length >= 3}
-      />
+      <div className="kahoot-screen kahoot-screen--lobby">
+        <div className="kahoot-header">
+          <p className="kahoot-brand">Minha Loja</p>
+          <p className="pin-display kahoot-pin">{session.pin}</p>
+          <p className="kahoot-title">Ranking disponivel apenas no final</p>
+          <p className="kahoot-subtitle">{PHASE_LABELS[session.phase]}</p>
+        </div>
+      </div>
     );
   }
 
   return (
     <KahootRanking
-      title="Aguardando rodada"
-      subtitle={`PIN ${session.pin} · ${PHASE_LABELS[session.phase]}`}
-      entries={session.stores.map((s) => ({
-        id: s.id,
-        name: s.companyName,
-        score: 0,
+      title="Ranking final"
+      subtitle={`${PHASE_LABELS[session.phase]} - PIN ${session.pin}`}
+      entries={session.finalRanking.map((r) => ({
+        id: r.storeId,
+        name: r.companyName,
+        score: r.ebitdaPercent,
       }))}
-      valueSuffix="%"
+      valueSuffix="% EBITDA"
+      showPodium
     />
   );
 }
