@@ -7,6 +7,7 @@ interface Params {
   categories: { id: string; name: string; unitCost: number; maxAvailable: number }[];
   initialCash: number;
   capexCosts: Record<string, number>;
+  idealOperators?: number;
 }
 
 interface Props {
@@ -27,7 +28,8 @@ export default function PlanEditor({
   const { opsPercent, quizPercent, csat } = csatBreakdown(
     plan.operatorsSales,
     plan.quizCorrect,
-    plan.quizTotal
+    plan.quizTotal,
+    params.idealOperators
   );
   const quizDone = plan.quizTotal > 0;
 
@@ -60,8 +62,8 @@ export default function PlanEditor({
       <section className="card mb-1 card-csat">
         <h3 className="section-title">CSAT — nível de serviço</h3>
         <p className="small-note mb-1">
-          CSAT = operadores (ideal 10) × acertos no questionário. Faça o quiz após a conversa
-          presencial com o facilitador.
+          CSAT = operadores (ideal {params.idealOperators ?? 10}) × acertos no questionário.
+          Faça o quiz após a conversa presencial com o facilitador.
         </p>
         <div className="csat-preview">
           <div className="csat-preview-item">

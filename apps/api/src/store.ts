@@ -1,9 +1,17 @@
 import { customAlphabet } from "nanoid";
 import { Prisma } from "@prisma/client";
 import type { GamePhase as PrismaPhase } from "@prisma/client";
-import type { GamePhase, RoundResult, SessionState, Store, StorePlan } from "@minha-loja/shared-types";
+import type {
+  GameConfig,
+  GamePhase,
+  RoundResult,
+  SessionState,
+  Store,
+  StorePlan,
+} from "@minha-loja/shared-types";
 import { DEFAULT_PLAN } from "@minha-loja/shared-types";
 import {
+  DEFAULT_GAME_CONFIG,
   defaultCategoriesPlan,
   finalizeGame,
   simulateRound,
@@ -34,11 +42,48 @@ function enrichPlan(plan: StorePlan): StorePlan {
 
 function parsePlan(json: Prisma.JsonValue | null): StorePlan | null {
   if (!json || typeof json !== "object") return null;
-  return json as StorePlan;
+  return json as unknown as StorePlan;
+}
+
+function parseGameConfig(json: Prisma.JsonValue | null): GameConfig {
+  if (!json || typeof json !== "object") return DEFAULT_GAME_CONFIG;
+  return {
+    ...DEFAULT_GAME_CONFIG,
+    ...(json as Partial<GameConfig>),
+    capexCosts: {
+      ...DEFAULT_GAME_CONFIG.capexCosts,
+      ...((json as Partial<GameConfig>).capexCosts ?? {}),
+    },
+    categories:
+      (json as Partial<GameConfig>).categories?.length
+        ? (json as Partial<GameConfig>).categories!
+        : DEFAULT_GAME_CONFIG.categories,
+  };
 }
 
 function toJson(plan: StorePlan): Prisma.InputJsonValue {
   return plan as unknown as Prisma.InputJsonValue;
+}
+
+function configToJson(config: GameConfig): Prisma.InputJsonValue {
+  return config as unknown as Prisma.InputJsonValue;
+}
+
+function syncPlanCategories(plan: StorePlan, config: GameConfig): StorePlan {
+  const current = new Map(plan.categories.map((category) => [category.categoryId, category]));
+  return {
+    ...plan,
+    categories: config.categories.map((category) => {
+      const existing = current.get(category.id);
+      return (
+        existing ?? {
+          categoryId: category.id,
+          quantity: Math.floor(category.maxAvailable * 0.15),
+          marginPercent: 22,
+        }
+      );
+    }),
+  };
 }
 
 type SessionWithRelations = Prisma.SessionGetPayload<{
@@ -63,12 +108,13 @@ function mapSession(row: SessionWithRelations): SessionState {
     facilitatorToken: row.facilitatorToken,
     phase: row.phase as GamePhase,
     currentRound: row.currentRound,
+    gameConfig: parseGameConfig(row.gameConfig),
     stores: row.stores.map(mapStore),
     roundResults: row.roundResults
       .sort((a, b) => a.round - b.round)
       .map((r) => ({
         round: r.round,
-        stores: r.results as RoundResult["stores"],
+        stores: r.results as unknown as RoundResult["stores"],
       })),
     finalRanking: row.finalRankings
       .sort((a, b) => a.position - b.position)
@@ -108,6 +154,7 @@ export async function createSession(publicBaseUrl: string): Promise<{
       facilitatorToken,
       phase: "LOBBY",
       currentRound: 0,
+      gameConfig: configToJson(DEFAULT_GAME_CONFIG),
     },
     include: { stores: true, roundResults: true, finalRankings: true },
   });
@@ -131,6 +178,32 @@ export async function getSessionByPin(pin: string): Promise<SessionState | null>
 
 export async function getSession(id: string): Promise<SessionState | null> {
   return loadSession(id);
+}
+
+export async function updateGameConfig(
+  sessionId: string,
+  config: GameConfig
+): Promise<SessionState | null> {
+  const session = await loadSession(sessionId);
+  if (!session) return null;
+  if (session.phase !== "LOBBY") {
+    throw new Error("Configuração só pode ser alterada antes de iniciar o jogo");
+  }
+
+  await prisma.session.update({
+    where: { id: sessionId },
+    data: { gameConfig: configToJson(config) },
+  });
+
+  for (const store of session.stores) {
+    if (!store.planDraft) continue;
+    await prisma.store.update({
+      where: { id: store.id },
+      data: { planDraft: toJson(syncPlanCategories(store.planDraft, config)) },
+    });
+  }
+
+  return loadSession(sessionId);
 }
 
 export async function joinStore(
@@ -164,7 +237,11 @@ export async function joinStore(
 
   const storeId = idGen();
   const storeToken = idGen();
-  const defaultPlan = enrichPlan({ ...DEFAULT_PLAN });
+  const gameConfig = parseGameConfig(sessionRow.gameConfig);
+  const defaultPlan = enrichPlan({
+    ...DEFAULT_PLAN,
+    categories: defaultCategoriesPlan(gameConfig.categories),
+  });
 
   await prisma.store.create({
     data: {
@@ -327,7 +404,12 @@ async function runRound(sessionId: string, session: SessionState, roundNum: numb
   }));
 
   const demandMultiplier = Math.max(activeStores.length, 1) / 4;
-  const results = simulateRound(inputs, roundNum, 2_500_000 * demandMultiplier);
+  const results = simulateRound(
+    inputs,
+    roundNum,
+    session.gameConfig.roundDemandBase * demandMultiplier,
+    session.gameConfig
+  );
 
   for (const r of results) {
     await prisma.store.update({

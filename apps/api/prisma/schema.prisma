@@ -25,6 +25,7 @@ model Session {
   facilitatorToken String
   phase            GamePhase       @default(LOBBY)
   currentRound     Int             @default(0)
+  gameConfig       Json?
   createdAt        DateTime        @default(now())
   stores           Store[]
   roundResults     RoundResult[]

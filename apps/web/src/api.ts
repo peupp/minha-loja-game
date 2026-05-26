@@ -1,5 +1,6 @@
 import type {
   CreateSessionResponse,
+  GameConfig,
   JoinStoreResponse,
   SessionState,
   StorePlan,
@@ -38,6 +39,26 @@ export async function fetchSession(sessionId: string): Promise<SessionState> {
 
 export async function fetchParams() {
   const res = await fetch(`${API}/params`);
+  return res.json();
+}
+
+export async function updateGameConfig(
+  sessionId: string,
+  facilitatorToken: string,
+  config: GameConfig
+): Promise<SessionState> {
+  const res = await fetch(`${API}/sessions/${sessionId}/config`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "x-facilitator-token": facilitatorToken,
+    },
+    body: JSON.stringify(config),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Falha ao salvar configuração");
+  }
   return res.json();
 }
 

@@ -4,6 +4,7 @@ import type { StorePlan } from "@minha-loja/shared-types";
 import { QUIZ_QUESTIONS, QUIZ_TOTAL } from "../data/quizQuestions";
 import { savePlan } from "../api";
 import { csatBreakdown } from "../utils/csat";
+import { useSession } from "../hooks/useSession";
 
 const OPTION_SHAPES = ["▲", "◆", "●", "■"];
 const OPTION_CLASSES = [
@@ -23,6 +24,7 @@ interface StoreCred {
 export default function QuizPage() {
   const [search] = useSearchParams();
   const sessionId = search.get("session");
+  const { session } = useSession(sessionId);
   const [cred, setCred] = useState<StoreCred | null>(null);
   const [plan, setPlan] = useState<StorePlan | null>(null);
   const [step, setStep] = useState(0);
@@ -99,8 +101,10 @@ export default function QuizPage() {
     const { opsPercent, quizPercent, csat } = csatBreakdown(
       plan.operatorsSales,
       plan.quizCorrect,
-      plan.quizTotal
+      plan.quizTotal,
+      session?.gameConfig.idealOperators
     );
+    const idealOperators = session?.gameConfig.idealOperators ?? 10;
     return (
       <div className="kahoot-quiz-screen">
         <div className="kahoot-quiz-result">
@@ -112,7 +116,7 @@ export default function QuizPage() {
 
           <div className="csat-breakdown">
             <div className="csat-row">
-              <span>Operadores ({plan.operatorsSales} / 10 ideal)</span>
+              <span>Operadores ({plan.operatorsSales} / {idealOperators} ideal)</span>
               <strong>{opsPercent.toFixed(0)}%</strong>
             </div>
             <div className="csat-row">

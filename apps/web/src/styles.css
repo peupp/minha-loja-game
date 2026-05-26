@@ -511,6 +511,48 @@ th {
   font-size: 0.88rem;
 }
 
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.setup-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.setup-section-heading .section-title {
+  margin-bottom: 0;
+}
+
+.config-category-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.config-category-row {
+  display: grid;
+  grid-template-columns: 1.3fr 0.8fr 0.9fr auto;
+  gap: 0.75rem;
+  align-items: end;
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-soft);
+}
+
+.config-category-row .form-group {
+  margin-bottom: 0;
+}
+
+.config-remove-btn {
+  min-width: 98px;
+}
+
 @media (max-width: 980px) {
   .landing-hero {
     grid-template-columns: 1fr;
@@ -527,6 +569,14 @@ th {
 
   .landing-results-grid {
     grid-template-columns: 1fr;
+  }
+
+  .config-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .config-category-row {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
@@ -557,6 +607,16 @@ th {
   .landing-cards-grid,
   .landing-pillars {
     grid-template-columns: 1fr;
+  }
+
+  .config-grid,
+  .config-category-row {
+    grid-template-columns: 1fr;
+  }
+
+  .setup-section-heading {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 

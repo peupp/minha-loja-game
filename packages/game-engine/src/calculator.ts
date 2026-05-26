@@ -1,19 +1,10 @@
-import type { RoundStoreResult, StorePlan } from "@minha-loja/shared-types";
+import type { GameConfig, RoundStoreResult, StorePlan } from "@minha-loja/shared-types";
 import {
-  AGING_RATE,
-  BREAKAGE_RATE,
   CAPEX_COSTS,
   CATEGORIES,
-  IDEAL_OPERATORS,
+  DEFAULT_GAME_CONFIG,
   INITIAL_CASH,
-  INTEREST_RATE_MONTH,
-  MAINTENANCE_EQUIPMENT,
-  MONTHLY_LICENSE_BASE,
   ROUND_DEMAND_BASE,
-  SALARY_SALES,
-  SALARY_SERVICE,
-  SELF_CHECKOUT_LICENSE_EACH,
-  TAX_RATE,
 } from "./params";
 
 export interface StoreInput {
@@ -38,11 +29,11 @@ function rankScores(values: { id: string; value: number }[], higherIsBetter: boo
   return map;
 }
 
-function calcBasketPrice(plan: StorePlan): number {
+function calcBasketPrice(plan: StorePlan, config: GameConfig): number {
   let total = 0;
   let weight = 0;
   for (const cat of plan.categories) {
-    const meta = CATEGORIES.find((c) => c.id === cat.categoryId);
+    const meta = config.categories.find((c) => c.id === cat.categoryId);
     if (!meta || cat.quantity <= 0) continue;
     const price = meta.unitCost * (1 + cat.marginPercent / 100);
     total += price * cat.quantity;
@@ -51,11 +42,11 @@ function calcBasketPrice(plan: StorePlan): number {
   return weight > 0 ? total / weight : 999999;
 }
 
-function calcAvailability(plan: StorePlan): number {
+function calcAvailability(plan: StorePlan, config: GameConfig): number {
   let bought = 0;
   let maxPossible = 0;
   for (const cat of plan.categories) {
-    const meta = CATEGORIES.find((c) => c.id === cat.categoryId);
+    const meta = config.categories.find((c) => c.id === cat.categoryId);
     if (!meta) continue;
     bought += cat.quantity;
     maxPossible += meta.maxAvailable;
@@ -63,48 +54,48 @@ function calcAvailability(plan: StorePlan): number {
   return maxPossible > 0 ? (bought / maxPossible) * 100 : 0;
 }
 
-function calcCsat(plan: StorePlan): number {
-  const opsRatio = Math.min(plan.operatorsSales / IDEAL_OPERATORS, 1);
+function calcCsat(plan: StorePlan, config: GameConfig): number {
+  const opsRatio = Math.min(plan.operatorsSales / config.idealOperators, 1);
   const quizRatio =
     plan.quizTotal > 0 ? plan.quizCorrect / plan.quizTotal : 0;
   return opsRatio * quizRatio * 100;
 }
 
-function planSpend(plan: StorePlan): {
+function planSpend(plan: StorePlan, config: GameConfig): {
   inventoryCost: number;
   capexCost: number;
   monthlyFixed: number;
 } {
   let inventoryCost = 0;
   for (const cat of plan.categories) {
-    const meta = CATEGORIES.find((c) => c.id === cat.categoryId);
+    const meta = config.categories.find((c) => c.id === cat.categoryId);
     if (meta) inventoryCost += meta.unitCost * cat.quantity;
   }
 
   let capexCost = 0;
   for (const item of plan.capex) {
-    if (item.approved) capexCost += CAPEX_COSTS[item.type] ?? 0;
+    if (item.approved) capexCost += config.capexCosts[item.type] ?? 0;
   }
 
-  let monthlyFixed = MONTHLY_LICENSE_BASE;
+  let monthlyFixed = config.monthlyLicenseBase;
   const hasScale = plan.capex.find((c) => c.type === "SCALE_FREEZER")?.approved;
-  if (!hasScale) monthlyFixed += MAINTENANCE_EQUIPMENT;
+  if (!hasScale) monthlyFixed += config.maintenanceEquipment;
 
   const selfCount = plan.capex.find((c) => c.type === "SELF_CHECKOUT")?.approved
     ? 4
     : 0;
-  monthlyFixed += selfCount * SELF_CHECKOUT_LICENSE_EACH;
+  monthlyFixed += selfCount * config.selfCheckoutLicenseEach;
 
   if (plan.capex.find((c) => c.type === "SECURITY")?.approved) {
-    monthlyFixed += MONTHLY_LICENSE_BASE * 0.2;
+    monthlyFixed += config.monthlyLicenseBase * 0.2;
   }
   if (plan.capex.find((c) => c.type === "WEBSITE")?.approved) {
-    monthlyFixed += MONTHLY_LICENSE_BASE * 0.3;
+    monthlyFixed += config.monthlyLicenseBase * 0.3;
   }
 
   monthlyFixed +=
-    plan.operatorsSales * SALARY_SALES +
-    plan.operatorsService * SALARY_SERVICE;
+    plan.operatorsSales * config.salarySales +
+    plan.operatorsService * config.salaryService;
 
   return { inventoryCost, capexCost, monthlyFixed };
 }
@@ -112,21 +103,22 @@ function planSpend(plan: StorePlan): {
 export function simulateRound(
   stores: StoreInput[],
   roundNumber: number,
-  totalDemand: number = ROUND_DEMAND_BASE
+  totalDemand: number = ROUND_DEMAND_BASE,
+  config: GameConfig = DEFAULT_GAME_CONFIG
 ): RoundStoreResult[] {
   if (stores.length === 0) return [];
 
   const basketPrices = stores.map((s) => ({
     id: s.storeId,
-    value: calcBasketPrice(s.plan),
+    value: calcBasketPrice(s.plan, config),
   }));
   const availabilities = stores.map((s) => ({
     id: s.storeId,
-    value: calcAvailability(s.plan),
+    value: calcAvailability(s.plan, config),
   }));
   const csats = stores.map((s) => ({
     id: s.storeId,
-    value: calcCsat(s.plan),
+    value: calcCsat(s.plan, config),
   }));
 
   const priceRanks = rankScores(basketPrices, false);
@@ -151,20 +143,20 @@ export function simulateRound(
     const demandShare = rankScore / sumPts;
     const revenue = totalDemand * demandShare;
 
-    const { inventoryCost, capexCost, monthlyFixed } = planSpend(store.plan);
+    const { inventoryCost, capexCost, monthlyFixed } = planSpend(store.plan, config);
     const spend =
       store.configRound === 1 ? inventoryCost + capexCost : inventoryCost;
     let cash =
       store.configRound === 1
-        ? INITIAL_CASH - spend
-        : (store.previousCash ?? INITIAL_CASH) - spend;
+        ? config.initialCash - spend
+        : (store.previousCash ?? config.initialCash) - spend;
 
     if (cash < 0) {
-      cash -= Math.abs(cash) * INTEREST_RATE_MONTH;
+      cash -= Math.abs(cash) * config.interestRateMonth;
     }
 
     const cogs = inventoryCost * demandShare * 0.85;
-    const taxes = revenue * TAX_RATE;
+    const taxes = revenue * config.taxRate;
     const costs = cogs + taxes + monthlyFixed / 3;
     const ebitda = revenue - costs;
     const ebitdaPercent = revenue > 0 ? (ebitda / revenue) * 100 : 0;
@@ -172,9 +164,9 @@ export function simulateRound(
     return {
       storeId: store.storeId,
       companyName: store.companyName,
-      basketPrice: calcBasketPrice(store.plan),
-      availability: calcAvailability(store.plan),
-      csat: calcCsat(store.plan),
+      basketPrice: calcBasketPrice(store.plan, config),
+      availability: calcAvailability(store.plan, config),
+      csat: calcCsat(store.plan, config),
       rankScore,
       demandShare: demandShare * 100,
       revenue,
@@ -213,8 +205,10 @@ export function finalizeGame(
     .sort((a, b) => b.ebitdaPercent - a.ebitdaPercent);
 }
 
-export function defaultCategoriesPlan(): StorePlan["categories"] {
-  return CATEGORIES.map((c) => ({
+export function defaultCategoriesPlan(
+  categories = DEFAULT_GAME_CONFIG.categories
+): StorePlan["categories"] {
+  return categories.map((c) => ({
     categoryId: c.id,
     quantity: Math.floor(c.maxAvailable * 0.15),
     marginPercent: 22,
