@@ -10,6 +10,7 @@ import {
   getSessionByPin,
   joinStore,
   publicSession,
+  recordStoreQuiz,
   submitPlan,
   submittedCount,
   updateGameConfig,
@@ -17,7 +18,7 @@ import {
   verifyFacilitator,
   verifyStore,
 } from "./store";
-import type { GameConfig, StorePlan } from "@minha-loja/shared-types";
+import type { GameConfig, RoundEvent, StorePlan } from "@minha-loja/shared-types";
 import { CATEGORIES, INITIAL_CASH, CAPEX_COSTS, DEFAULT_GAME_CONFIG } from "@minha-loja/game-engine";
 import { prisma } from "./prisma";
 
@@ -128,6 +129,29 @@ app.get("/api/sessions/:sessionId/stores/:storeId/plan", async (req, res) => {
   res.json({ plan: store.planDraft ?? store.planSubmitted });
 });
 
+app.get("/api/sessions/:sessionId/stores/:storeId/quiz", async (req, res) => {
+  const token = req.headers["x-facilitator-token"] as string;
+  const s = await verifyFacilitator(req.params.sessionId, token);
+  if (!s) return res.status(403).json({ error: "Facilitador não autorizado" });
+  const store = s.stores.find((x) => x.id === req.params.storeId);
+  if (!store) return res.status(404).json({ error: "Loja não encontrada" });
+  res.json({ plan: store.planDraft ?? store.planSubmitted });
+});
+
+app.put("/api/sessions/:sessionId/stores/:storeId/quiz", async (req, res) => {
+  const token = req.headers["x-facilitator-token"] as string;
+  const s = await verifyFacilitator(req.params.sessionId, token);
+  if (!s) return res.status(403).json({ error: "Facilitador não autorizado" });
+
+  const quizCorrect = Number(req.body?.quizCorrect ?? 0);
+  const quizTotal = Number(req.body?.quizTotal ?? 0);
+  const store = await recordStoreQuiz(s.id, req.params.storeId, quizCorrect, quizTotal);
+  if (!store) return res.status(404).json({ error: "Loja não encontrada" });
+  const updated = await getSession(s.id);
+  if (updated) await emitSession(updated.id);
+  res.json({ ok: true, plan: store.planDraft ?? store.planSubmitted });
+});
+
 app.put("/api/sessions/:sessionId/stores/:storeId/plan", async (req, res) => {
   const token = req.headers["x-store-token"] as string;
   const s = await verifyStore(req.params.sessionId, req.params.storeId, token);
@@ -168,7 +192,12 @@ app.post("/api/sessions/:sessionId/advance", async (req, res) => {
   if (!s) return res.status(403).json({ error: "Facilitador não autorizado" });
 
   try {
-    const updated = await advancePhase(s.id);
+    const events = Array.isArray(req.body?.events)
+      ? (req.body.events as RoundEvent[])
+      : req.body?.event
+        ? [req.body.event as RoundEvent]
+        : [];
+    const updated = await advancePhase(s.id, events);
     if (!updated) return res.status(404).json({ error: "Sessão não encontrada" });
     await emitSession(updated.id);
     res.json(publicSession(updated));

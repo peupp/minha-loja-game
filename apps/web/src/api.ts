@@ -2,6 +2,7 @@ import type {
   CreateSessionResponse,
   GameConfig,
   JoinStoreResponse,
+  RoundEvent,
   SessionState,
   StorePlan,
 } from "@minha-loja/shared-types";
@@ -78,6 +79,37 @@ export async function savePlan(
   });
 }
 
+export async function fetchFacilitatorStorePlan(
+  sessionId: string,
+  facilitatorToken: string,
+  storeId: string
+): Promise<{ plan: StorePlan | null }> {
+  const res = await fetch(`${API}/sessions/${sessionId}/stores/${storeId}/quiz`, {
+    headers: { "x-facilitator-token": facilitatorToken },
+  });
+  if (!res.ok) throw new Error("Falha ao carregar CSAT da empresa");
+  return res.json();
+}
+
+export async function saveFacilitatorQuiz(
+  sessionId: string,
+  facilitatorToken: string,
+  storeId: string,
+  quizCorrect: number,
+  quizTotal: number
+): Promise<{ plan: StorePlan | null }> {
+  const res = await fetch(`${API}/sessions/${sessionId}/stores/${storeId}/quiz`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "x-facilitator-token": facilitatorToken,
+    },
+    body: JSON.stringify({ quizCorrect, quizTotal }),
+  });
+  if (!res.ok) throw new Error("Falha ao salvar CSAT");
+  return res.json();
+}
+
 export async function submitPlan(
   sessionId: string,
   storeId: string,
@@ -99,11 +131,16 @@ export async function submitPlan(
 
 export async function advancePhase(
   sessionId: string,
-  facilitatorToken: string
+  facilitatorToken: string,
+  events: RoundEvent[] = []
 ): Promise<SessionState> {
   const res = await fetch(`${API}/sessions/${sessionId}/advance`, {
     method: "POST",
-    headers: { "x-facilitator-token": facilitatorToken },
+    headers: {
+      "Content-Type": "application/json",
+      "x-facilitator-token": facilitatorToken,
+    },
+    body: JSON.stringify({ events }),
   });
   if (!res.ok) throw new Error("Falha ao avançar fase");
   return res.json();

@@ -1105,6 +1105,11 @@ th {
   text-decoration: none;
 }
 
+.csat-inline-status {
+  display: block;
+  margin-top: 0.25rem;
+}
+
 .facilitator-links {
   display: flex;
   flex-wrap: wrap;
@@ -1116,6 +1121,48 @@ th {
 .facilitator-links a {
   color: var(--orange);
   font-weight: 700;
+}
+
+.event-control-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.event-control-head .section-title,
+.event-control-head .small-note,
+.event-control .form-group {
+  margin-bottom: 0;
+}
+
+.event-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-soft);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.event-toggle input {
+  width: auto;
+}
+
+.event-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.event-row {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  gap: 0.75rem;
+  align-items: end;
 }
 
 .sr-only {
@@ -1140,5 +1187,17 @@ th {
 
   .csat-preview-item {
     grid-template-columns: 1fr;
+  }
+
+  .event-control-head {
+    flex-direction: column;
+  }
+
+  .event-row {
+    grid-template-columns: 1fr;
+  }
+
+  .event-toggle {
+    width: 100%;
   }
 }

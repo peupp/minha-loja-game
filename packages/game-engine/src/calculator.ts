@@ -1,4 +1,10 @@
-import type { GameConfig, RoundStoreResult, StorePlan } from "@minha-loja/shared-types";
+import type {
+  GameConfig,
+  RoundEvent,
+  RoundStoreResult,
+  StorePlan,
+} from "@minha-loja/shared-types";
+import { CAPEX_LABELS } from "@minha-loja/shared-types";
 import {
   CAPEX_COSTS,
   CATEGORIES,
@@ -6,6 +12,8 @@ import {
   INITIAL_CASH,
   ROUND_DEMAND_BASE,
 } from "./params";
+
+const ROUND_EVENT_LABELS = CAPEX_LABELS;
 
 export interface StoreInput {
   storeId: string;
@@ -108,11 +116,60 @@ function planSpend(plan: StorePlan, config: GameConfig): {
   return { inventoryCost, inventoryByCategory, capexCost, monthlyFixed };
 }
 
+function hasCapex(plan: StorePlan, type: RoundEvent["type"]): boolean {
+  return plan.capex.some((item) => item.type === type && item.approved);
+}
+
+function categoryInventoryShare(
+  inventoryByCategory: Record<string, number>,
+  categoryId: string
+): number {
+  const total = Object.values(inventoryByCategory).reduce((sum, quantity) => sum + quantity, 0);
+  return total > 0 ? (inventoryByCategory[categoryId] ?? 0) / total : 0;
+}
+
+function eventLossFactor(
+  event: RoundEvent,
+  inventoryByCategory: Record<string, number>,
+  roundNumber: number
+): { factor: number; note: string } {
+  const daysFactor = Math.min(Math.max(event.days, 0), 30) / 30;
+
+  if (event.type === "SCALE_FREEZER") {
+    const perishablesShare = categoryInventoryShare(inventoryByCategory, "pereciveis");
+    return {
+      factor: daysFactor * perishablesShare,
+      note: "Defeito em balança/freezer: perda proporcional apenas nas vendas de Perecíveis.",
+    };
+  }
+
+  if (event.type === "SELF_CHECKOUT") {
+    return {
+      factor: daysFactor,
+      note: "Pico de clientes: perda proporcional de vendas por filas sem self checkout.",
+    };
+  }
+
+  if (event.type === "CONTINUOUS_IMPROVEMENT") {
+    const expansionPressure = roundNumber <= 1 ? 0.5 : 1;
+    return {
+      factor: daysFactor * expansionPressure,
+      note: "Melhoria contínua ausente: perda por dificuldade de absorver novas demandas.",
+    };
+  }
+
+  return {
+    factor: daysFactor,
+    note: "Indisponibilidade operacional: perda proporcional de vendas no período afetado.",
+  };
+}
+
 export function simulateRound(
   stores: StoreInput[],
   roundNumber: number,
   totalDemand: number = ROUND_DEMAND_BASE,
-  config: GameConfig = DEFAULT_GAME_CONFIG
+  config: GameConfig = DEFAULT_GAME_CONFIG,
+  events: RoundEvent[] = []
 ): RoundStoreResult[] {
   if (stores.length === 0) return [];
 
@@ -149,7 +206,7 @@ export function simulateRound(
       (availRanks.get(store.storeId)?.points ?? 1) +
       (csatRanks.get(store.storeId)?.points ?? 1);
     const demandShare = rankScore / sumPts;
-    const revenue = totalDemand * demandShare;
+    let revenue = totalDemand * demandShare;
 
     const { inventoryCost, inventoryByCategory, capexCost, monthlyFixed } =
       planSpend(store.plan, config);
@@ -164,7 +221,35 @@ export function simulateRound(
       cash < 0 ? Math.abs(cash) * config.interestRateMonth : 0;
     cash -= negativeCashInterest;
 
-    const cogs = inventoryCost * demandShare * 0.85;
+    let cogs = inventoryCost * demandShare * 0.85;
+    const activeEvents = events.filter((event) => event.days > 0);
+    const eventImpacts: NonNullable<RoundStoreResult["eventImpacts"]> = [];
+    for (const event of activeEvents) {
+      const protectedByCapex = hasCapex(store.plan, event.type);
+      if (!protectedByCapex) {
+        const loss = eventLossFactor(event, inventoryByCategory, roundNumber);
+        const revenueLoss = revenue * Math.min(loss.factor, 1);
+        revenue -= revenueLoss;
+        cogs -= cogs * Math.min(loss.factor, 1);
+        eventImpacts.push({
+          eventType: event.type,
+          eventLabel: ROUND_EVENT_LABELS[event.type],
+          protectedByCapex,
+          affectedDays: event.days,
+          revenueLoss,
+          note: loss.note,
+        });
+      } else {
+        eventImpacts.push({
+          eventType: event.type,
+          eventLabel: ROUND_EVENT_LABELS[event.type],
+          protectedByCapex,
+          affectedDays: 0,
+          revenueLoss: 0,
+          note: "CAPEX aprovado: evento mitigado sem perda de vendas.",
+        });
+      }
+    }
     const taxes = revenue * config.taxRate;
     const costs = cogs + taxes + monthlyFixed / 3;
     const ebitda = revenue - costs;
@@ -196,6 +281,8 @@ export function simulateRound(
       ebitda,
       ebitdaPercent,
       cashRemaining: cash,
+      eventImpact: eventImpacts[0],
+      eventImpacts: eventImpacts.length > 0 ? eventImpacts : undefined,
     };
   });
 }

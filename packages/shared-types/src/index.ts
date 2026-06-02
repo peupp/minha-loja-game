@@ -16,6 +16,22 @@ export type CapexType =
   | "SELF_CHECKOUT"
   | "CONTINUOUS_IMPROVEMENT";
 
+export type RoundEventType = CapexType;
+
+export interface RoundEvent {
+  type: RoundEventType;
+  days: number;
+}
+
+export interface RoundEventImpact {
+  eventType: RoundEventType;
+  eventLabel: string;
+  protectedByCapex: boolean;
+  affectedDays: number;
+  revenueLoss: number;
+  note: string;
+}
+
 export interface CapexItem {
   type: CapexType;
   approved: boolean;
@@ -97,10 +113,14 @@ export interface RoundStoreResult {
   ebitda: number;
   ebitdaPercent: number;
   cashRemaining: number;
+  eventImpact?: RoundEventImpact;
+  eventImpacts?: RoundEventImpact[];
 }
 
 export interface RoundResult {
   round: number;
+  event?: RoundEvent;
+  events?: RoundEvent[];
   stores: RoundStoreResult[];
 }
 
@@ -166,3 +186,5 @@ export const CAPEX_LABELS: Record<CapexType, string> = {
   SELF_CHECKOUT: "Self Checkout",
   CONTINUOUS_IMPROVEMENT: "Melhoria Contínua",
 };
+
+export const ROUND_EVENT_LABELS: Record<RoundEventType, string> = CAPEX_LABELS;

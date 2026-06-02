@@ -3,7 +3,17 @@ import { useState } from "react";
 import { useSession } from "../hooks/useSession";
 import { advancePhase } from "../api";
 import { PHASE_LABELS, NEXT_PHASE_HINT } from "../constants";
-import type { GamePhase } from "@minha-loja/shared-types";
+import {
+  CAPEX_LABELS,
+  type GamePhase,
+  type RoundEventType,
+} from "@minha-loja/shared-types";
+
+const ROUND_EVENT_LABELS = CAPEX_LABELS;
+const EVENT_TYPES = Object.keys(ROUND_EVENT_LABELS) as RoundEventType[];
+const DEFAULT_EVENT_DAYS = 3;
+const emptyEventDays = () =>
+  Object.fromEntries(EVENT_TYPES.map((type) => [type, 0])) as Record<RoundEventType, number>;
 
 export default function FacilitatorPage() {
   const [search] = useSearchParams();
@@ -13,12 +23,24 @@ export default function FacilitatorPage() {
     (sessionId ? localStorage.getItem(`facilitator:${sessionId}`) : null);
   const { session, loading } = useSession(sessionId);
   const [advancing, setAdvancing] = useState(false);
+  const [eventDaysByType, setEventDaysByType] =
+    useState<Record<RoundEventType, number>>(emptyEventDays);
 
   const handleAdvance = async () => {
     if (!sessionId || !token) return;
     setAdvancing(true);
     try {
-      await advancePhase(sessionId, token);
+      const shouldApplyEvent = session?.phase === "CONFIG_1" || session?.phase === "CONFIG_2";
+      await advancePhase(
+        sessionId,
+        token,
+        shouldApplyEvent
+          ? EVENT_TYPES.map((type) => ({
+              type,
+              days: eventDaysByType[type],
+            })).filter((event) => event.days > 0)
+          : []
+      );
     } finally {
       setAdvancing(false);
     }
@@ -40,7 +62,17 @@ export default function FacilitatorPage() {
   const submitted = session.stores.filter((s) => s.planSubmitted).length;
   const phase = session.phase as GamePhase;
   const canAdvance = phase !== "FINAL";
+  const canConfigureEvent = phase === "CONFIG_1" || phase === "CONFIG_2";
   const setupUrl = `/facilitador/configuracao?session=${sessionId}&token=${token}`;
+  const selectedEventsCount = EVENT_TYPES.filter((type) => eventDaysByType[type] > 0).length;
+  const lastRound = session.roundResults[session.roundResults.length - 1];
+
+  const setEventDays = (type: RoundEventType, days: number) => {
+    setEventDaysByType((current) => ({
+      ...current,
+      [type]: Math.min(Math.max(days, 0), 30),
+    }));
+  };
 
   return (
     <div className="page">
@@ -76,6 +108,57 @@ export default function FacilitatorPage() {
         )}
       </div>
 
+      {canConfigureEvent && (
+        <div className="card mb-1 event-control">
+          <div className="event-control-head">
+            <div>
+              <h3 className="section-title">Eventos da rodada</h3>
+              <p className="small-note">
+                Escolha um ou mais riscos para testar se o CAPEX aprovado protegeu cada loja.
+              </p>
+            </div>
+            <span className="badge">{selectedEventsCount} selecionado(s)</span>
+          </div>
+          <div className="event-list">
+            {EVENT_TYPES.map((type) => {
+              const days = eventDaysByType[type];
+              const enabled = days > 0;
+              return (
+                <div key={type} className="event-row">
+                  <label className="event-toggle">
+                    <input
+                      type="checkbox"
+                      checked={enabled}
+                      onChange={(e) =>
+                        setEventDays(type, e.target.checked ? DEFAULT_EVENT_DAYS : 0)
+                      }
+                    />
+                    {ROUND_EVENT_LABELS[type]}
+                  </label>
+                  <div className="form-group">
+                    <label>Dias</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={30}
+                      value={days}
+                      disabled={!enabled}
+                      onChange={(e) => setEventDays(type, Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {selectedEventsCount > 0 && (
+            <p className="hint">
+              Ao avançar, cada loja perde vendas nos eventos em que não tiver o CAPEX
+              correspondente.
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="card mb-1">
         <h3 className="section-title">
           Empresas ({session.stores.length})
@@ -90,6 +173,7 @@ export default function FacilitatorPage() {
               <tr>
                 <th>Empresa</th>
                 <th>Representante</th>
+                <th>CSAT</th>
                 <th>Plano</th>
               </tr>
             </thead>
@@ -98,6 +182,16 @@ export default function FacilitatorPage() {
                 <tr key={s.id}>
                   <td>{s.companyName}</td>
                   <td>{s.playerName}</td>
+                  <td>
+                    <Link to={`/quiz?session=${sessionId}&store=${s.id}&token=${token}`}>
+                      Registrar CSAT
+                    </Link>
+                    {s.planSubmitted && (
+                      <span className="small-note csat-inline-status">
+                        {s.planSubmitted.quizCorrect}/{session.gameConfig.questionCount}
+                      </span>
+                    )}
+                  </td>
                   <td>{s.planSubmitted ? "✓ Enviado" : "Pendente"}</td>
                 </tr>
               ))}
@@ -111,23 +205,46 @@ export default function FacilitatorPage() {
         )}
       </div>
 
-      {session.roundResults.length > 0 && (
+      {lastRound && (
         <div className="card mb-1">
           <h3 className="section-title">Última rodada</h3>
+          {(lastRound.events?.length ?? (lastRound.event ? 1 : 0)) > 0 && (
+            <p className="small-note mb-1">
+              Eventos aplicados:{" "}
+              {(lastRound.events ?? (lastRound.event ? [lastRound.event] : []))
+                .map((event) => `${ROUND_EVENT_LABELS[event.type]} (${event.days} dia(s))`)
+                .join(", ")}
+            </p>
+          )}
           <table>
             <thead>
               <tr>
                 <th>Empresa</th>
                 <th>Demanda %</th>
                 <th>EBITDA %</th>
+                <th>Evento</th>
               </tr>
             </thead>
             <tbody>
-              {session.roundResults[session.roundResults.length - 1].stores.map((r) => (
+              {lastRound.stores.map((r) => (
                 <tr key={r.storeId}>
                   <td>{r.companyName}</td>
                   <td>{r.demandShare.toFixed(1)}%</td>
                   <td>{r.ebitdaPercent.toFixed(1)}%</td>
+                  <td>
+                    {r.eventImpact
+                      ? (r.eventImpacts ?? [r.eventImpact])
+                          .map((impact) =>
+                            impact.protectedByCapex
+                              ? `${impact.eventLabel}: protegido`
+                              : `${impact.eventLabel}: perda R$ ${impact.revenueLoss.toLocaleString(
+                                  "pt-BR",
+                                  { maximumFractionDigits: 0 }
+                                )}`
+                          )
+                          .join(" | ")
+                      : "-"}
+                  </td>
                 </tr>
               ))}
             </tbody>

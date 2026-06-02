@@ -88,6 +88,14 @@ export default function StorePage() {
   const lastRound = session.roundResults[session.roundResults.length - 1];
   const myResult = lastRound?.stores.find((r) => r.storeId === cred.storeId);
   const myFinal = session.finalRanking.find((r) => r.storeId === cred.storeId);
+  const ownedStockByCategory = new Map<string, number>();
+  for (const round of session.roundResults) {
+    const storeRound = round.stores.find((r) => r.storeId === cred.storeId);
+    if (!storeRound) continue;
+    for (const [categoryId, quantity] of Object.entries(storeRound.inventoryByCategory ?? {})) {
+      ownedStockByCategory.set(categoryId, (ownedStockByCategory.get(categoryId) ?? 0) + quantity);
+    }
+  }
   const consumedByCategory = new Map<string, number>();
   for (const round of session.roundResults) {
     for (const store of round.stores) {
@@ -138,15 +146,42 @@ export default function StorePage() {
         )}
       </div>
 
+      <section className="card mb-1">
+        <h3 className="section-title">Estoque que a empresa ja possui</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Categoria</th>
+              <th>Quantidade</th>
+              <th>Valor de custo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {session.gameConfig.categories.map((category) => {
+              const quantity = ownedStockByCategory.get(category.id) ?? 0;
+              return (
+                <tr key={category.id}>
+                  <td>{category.name}</td>
+                  <td>{quantity.toLocaleString("pt-BR")}</td>
+                  <td>{money(quantity * category.unitCost)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {session.roundResults.length === 0 && (
+          <p className="small-note">
+            Nenhum estoque comprado ainda. Apos a primeira rodada, ele aparecera aqui.
+          </p>
+        )}
+      </section>
+
       {canEdit && plan.quizTotal < session.gameConfig.questionCount && (
         <div className="card mb-1 card-csat">
           <p>
-            <strong>CSAT pendente.</strong> Registre acerto ou erro para cada pergunta feita
-            presencialmente pelo facilitador.
+            <strong>CSAT pendente.</strong> Aguarde o facilitador registrar os acertos das
+            perguntas presenciais.
           </p>
-          <Link to={`/quiz?session=${sessionId}`} className="quiz-cta-link mt-1">
-            <button type="button" className="btn-primary">Registrar CSAT</button>
-          </Link>
         </div>
       )}
 

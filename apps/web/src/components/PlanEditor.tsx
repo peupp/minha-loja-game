@@ -1,6 +1,5 @@
 import type { StorePlan, CapexType } from "@minha-loja/shared-types";
 import { CAPEX_LABELS } from "@minha-loja/shared-types";
-import { Link } from "react-router-dom";
 import { csatBreakdown } from "../utils/csat";
 
 interface Params {
@@ -28,7 +27,6 @@ export default function PlanEditor({
   budgetInitialCash = params.initialCash,
   includeCapexInBudget = true,
   readOnly,
-  sessionId,
 }: Props) {
   const { opsPercent, quizPercent, csat } = csatBreakdown(
     plan.operatorsSales,
@@ -134,13 +132,6 @@ export default function PlanEditor({
             <strong>{csat.toFixed(1)}%</strong>
           </div>
         </div>
-        {!readOnly && sessionId && (
-          <Link to={`/quiz?session=${sessionId}`} className="quiz-cta-link">
-            <button type="button" className="btn-primary btn-block">
-              {quizDone ? "Editar respostas de CSAT" : "Registrar CSAT presencial"}
-            </button>
-          </Link>
-        )}
       </section>
 
       <section className="card mb-1">

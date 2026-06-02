@@ -4,6 +4,7 @@ import type { GamePhase as PrismaPhase } from "@prisma/client";
 import type {
   GameConfig,
   GamePhase,
+  RoundEvent,
   RoundResult,
   SessionState,
   Store,
@@ -130,7 +131,9 @@ function mapSession(row: SessionWithRelations): SessionState {
       .sort((a, b) => a.round - b.round)
       .map((r) => ({
         round: r.round,
-        stores: r.results as unknown as RoundResult["stores"],
+        ...((r.results as unknown as { event?: RoundEvent; events?: RoundEvent[]; stores?: RoundResult["stores"] }).stores
+          ? (r.results as unknown as { event?: RoundEvent; events?: RoundEvent[]; stores: RoundResult["stores"] })
+          : { stores: r.results as unknown as RoundResult["stores"] }),
       })),
     finalRanking: row.finalRankings
       .sort((a, b) => a.position - b.position)
@@ -311,6 +314,7 @@ export async function updatePlan(
   if (!store) return null;
   const session = await loadSession(sessionId);
   if (!session) return null;
+  const currentPlan = parsePlan(store.planDraft) ?? parsePlan(store.planSubmitted);
 
   const available = new Map(
     remainingCategories(session.gameConfig, session.roundResults).map((category) => [
@@ -320,6 +324,8 @@ export async function updatePlan(
   );
   const cappedPlan: StorePlan = {
     ...plan,
+    quizCorrect: currentPlan?.quizCorrect ?? plan.quizCorrect,
+    quizTotal: currentPlan?.quizTotal ?? plan.quizTotal,
     categories: plan.categories.map((category) => ({
       ...category,
       quantity: Math.min(category.quantity, available.get(category.categoryId) ?? category.quantity),
@@ -349,6 +355,49 @@ export async function submitPlan(sessionId: string, storeId: string): Promise<St
   return mapStore(row);
 }
 
+export async function recordStoreQuiz(
+  sessionId: string,
+  storeId: string,
+  quizCorrect: number,
+  quizTotal: number
+): Promise<Store | null> {
+  const storeRow = await prisma.store.findFirst({
+    where: { id: storeId, sessionId },
+  });
+  if (!storeRow) return null;
+
+  const session = await loadSession(sessionId);
+  if (!session) return null;
+
+  const safeTotal = Math.max(0, Math.floor(quizTotal));
+  const safeCorrect = Math.min(Math.max(0, Math.floor(quizCorrect)), safeTotal);
+  const basePlan =
+    parsePlan(storeRow.planDraft) ??
+    parsePlan(storeRow.planSubmitted) ??
+    enrichPlan({
+      ...DEFAULT_PLAN,
+      categories: defaultCategoriesPlan(session.gameConfig.categories),
+    });
+  const updatedPlan: StorePlan = {
+    ...basePlan,
+    quizCorrect: safeCorrect,
+    quizTotal: safeTotal,
+  };
+  const data: Prisma.StoreUpdateInput = {
+    planDraft: toJson(updatedPlan),
+  };
+
+  if (storeRow.planSubmitted) {
+    data.planSubmitted = toJson(updatedPlan);
+  }
+
+  const row = await prisma.store.update({
+    where: { id: storeId },
+    data,
+  });
+  return mapStore(row);
+}
+
 export function publicSession(s: SessionState): SessionState {
   return {
     ...s,
@@ -363,7 +412,10 @@ export function publicSession(s: SessionState): SessionState {
   };
 }
 
-export async function advancePhase(sessionId: string): Promise<SessionState | null> {
+export async function advancePhase(
+  sessionId: string,
+  events: RoundEvent[] = []
+): Promise<SessionState | null> {
   const session = await loadSession(sessionId);
   if (!session) return null;
 
@@ -392,7 +444,7 @@ export async function advancePhase(sessionId: string): Promise<SessionState | nu
   if (next === "ROUND_1" || next === "ROUND_2") {
     const roundNum = next === "ROUND_1" ? 1 : nextRound;
     completedRound = roundNum;
-    await runRound(sessionId, session, roundNum);
+    await runRound(sessionId, session, roundNum, events);
   }
 
   if (next === "FINAL") {
@@ -429,7 +481,12 @@ export async function advancePhase(sessionId: string): Promise<SessionState | nu
   return loadSession(sessionId);
 }
 
-async function runRound(sessionId: string, session: SessionState, roundNum: number) {
+async function runRound(
+  sessionId: string,
+  session: SessionState,
+  roundNum: number,
+  events: RoundEvent[] = []
+) {
   const configRound: 1 | 2 = roundNum === 1 ? 1 : 2;
   const activeStores = session.stores.filter((st) => st.planSubmitted);
   const roundConfig: GameConfig = {
@@ -456,7 +513,8 @@ async function runRound(sessionId: string, session: SessionState, roundNum: numb
     inputs,
     roundNum,
     session.gameConfig.roundDemandBase * demandMultiplier,
-    roundConfig
+    roundConfig,
+    events
   );
 
   for (const r of results) {
@@ -466,6 +524,12 @@ async function runRound(sessionId: string, session: SessionState, roundNum: numb
     });
   }
 
+  const activeEvents = events.filter((event) => event.days > 0);
+  const resultPayload =
+    activeEvents.length > 0
+      ? { event: activeEvents[0], events: activeEvents, stores: results }
+      : { stores: results };
+
   await prisma.roundResult.upsert({
     where: {
       sessionId_round: { sessionId, round: roundNum },
@@ -473,10 +537,10 @@ async function runRound(sessionId: string, session: SessionState, roundNum: numb
     create: {
       sessionId,
       round: roundNum,
-      results: results as unknown as Prisma.InputJsonValue,
+      results: resultPayload as unknown as Prisma.InputJsonValue,
     },
     update: {
-      results: results as unknown as Prisma.InputJsonValue,
+      results: resultPayload as unknown as Prisma.InputJsonValue,
     },
   });
 }
