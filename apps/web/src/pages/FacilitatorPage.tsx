@@ -1,11 +1,13 @@
 import { useSearchParams, Link } from "react-router-dom";
 import { useState } from "react";
 import { useSession } from "../hooks/useSession";
+import { useFinalRedirect } from "../hooks/useFinalRedirect";
 import { advancePhase } from "../api";
 import { PHASE_LABELS, NEXT_PHASE_HINT } from "../constants";
 import {
   CAPEX_LABELS,
   type GamePhase,
+  type RoundEventImpact,
   type RoundEventType,
 } from "@minha-loja/shared-types";
 
@@ -22,6 +24,7 @@ export default function FacilitatorPage() {
     search.get("token") ||
     (sessionId ? localStorage.getItem(`facilitator:${sessionId}`) : null);
   const { session, loading } = useSession(sessionId);
+  useFinalRedirect(sessionId, session);
   const [advancing, setAdvancing] = useState(false);
   const [eventDaysByType, setEventDaysByType] =
     useState<Record<RoundEventType, number>>(emptyEventDays);
@@ -73,6 +76,34 @@ export default function FacilitatorPage() {
       [type]: Math.min(Math.max(days, 0), 30),
     }));
   };
+  const money = (value: number) =>
+    value.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      maximumFractionDigits: 0,
+    });
+  const eventLossBase = (impact: RoundEventImpact, finalRevenue: number) =>
+    impact.revenueBeforeLoss ?? finalRevenue + impact.revenueLoss;
+  const lastRoundLossRows =
+    lastRound?.stores
+      .map((store) => ({
+        store,
+        impacts: (store.eventImpacts ?? (store.eventImpact ? [store.eventImpact] : [])).filter(
+          (impact) => !impact.protectedByCapex && impact.revenueLoss > 0
+        ),
+      }))
+      .filter((row) => row.impacts.length > 0) ?? [];
+  const totalStoreLoss = (impacts: RoundEventImpact[]) =>
+    impacts.reduce((total, impact) => total + impact.revenueLoss, 0);
+  const formatLossFormula = (impact: RoundEventImpact, finalRevenue: number) => {
+    const base = eventLossBase(impact, finalRevenue);
+    const percent = impact.lossPercent ?? (base > 0 ? impact.revenueLoss / base : 0);
+    return {
+      base,
+      percent,
+      loss: impact.revenueLoss,
+    };
+  };
 
   return (
     <div className="page">
@@ -84,8 +115,6 @@ export default function FacilitatorPage() {
         <p className="pin-display">{session.pin}</p>
         <div className="facilitator-links">
           <Link to={setupUrl}>Configuração inicial</Link>
-          <Link to={`/telao?session=${sessionId}`}>Telão (ranking Kahoot)</Link>
-          <Link to={`/ranking?session=${sessionId}`}>Ranking final</Link>
         </div>
       </div>
 
@@ -163,6 +192,10 @@ export default function FacilitatorPage() {
         <h3 className="section-title">
           Empresas ({session.stores.length})
         </h3>
+        <p className="small-note mb-1">
+          Acompanha quem entrou na partida, quem já enviou o plano e permite registrar o CSAT de
+          cada empresa.
+        </p>
         {session.stores.length === 0 ? (
           <p className="muted">
             Nenhuma empresa entrou ainda. Compartilhe o PIN — não há mínimo para iniciar.
@@ -208,6 +241,10 @@ export default function FacilitatorPage() {
       {lastRound && (
         <div className="card mb-1">
           <h3 className="section-title">Última rodada</h3>
+          <p className="small-note mb-1">
+            Mostra o desempenho de cada empresa na rodada encerrada e o impacto dos eventos
+            aplicados.
+          </p>
           {(lastRound.events?.length ?? (lastRound.event ? 1 : 0)) > 0 && (
             <p className="small-note mb-1">
               Eventos aplicados:{" "}
@@ -222,7 +259,7 @@ export default function FacilitatorPage() {
                 <th>Empresa</th>
                 <th>Demanda %</th>
                 <th>EBITDA %</th>
-                <th>Evento</th>
+                <th>Perdas por evento</th>
               </tr>
             </thead>
             <tbody>
@@ -232,29 +269,66 @@ export default function FacilitatorPage() {
                   <td>{r.demandShare.toFixed(1)}%</td>
                   <td>{r.ebitdaPercent.toFixed(1)}%</td>
                   <td>
-                    {r.eventImpact
-                      ? (r.eventImpacts ?? [r.eventImpact])
-                          .map((impact) =>
-                            impact.protectedByCapex
-                              ? `${impact.eventLabel}: protegido`
-                              : `${impact.eventLabel}: perda R$ ${impact.revenueLoss.toLocaleString(
-                                  "pt-BR",
-                                  { maximumFractionDigits: 0 }
-                                )}`
-                          )
-                          .join(" | ")
-                      : "-"}
+                    {money(
+                      (r.eventImpacts ?? (r.eventImpact ? [r.eventImpact] : []))
+                        .filter((impact) => !impact.protectedByCapex)
+                        .reduce((total, impact) => total + impact.revenueLoss, 0)
+                    )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+
+          {lastRoundLossRows.length > 0 && (
+            <div className="facilitator-loss-section">
+              <h3 className="section-title">Perdas por CAPEX não selecionado</h3>
+              <p className="small-note mb-1">
+                Detalha a conta de quanto cada empresa deixou de vender nos eventos em que não
+                tinha o CAPEX correspondente.
+              </p>
+              <div className="facilitator-loss-grid">
+                {lastRoundLossRows.map(({ store, impacts }) => (
+                  <div className="facilitator-loss-card" key={store.storeId}>
+                    <div className="facilitator-loss-card-head">
+                      <strong>{store.companyName}</strong>
+                      <span className="badge">Perda total {money(totalStoreLoss(impacts))}</span>
+                    </div>
+                    <div className="facilitator-loss-list">
+                      {impacts.map((impact) => {
+                        const formula = formatLossFormula(impact, store.revenue);
+                        return (
+                          <div className="facilitator-loss-item" key={impact.eventType}>
+                            <div className="facilitator-loss-label">
+                              <strong>{impact.eventLabel}</strong>
+                              <span>{impact.affectedDays} dia(s) sem CAPEX correspondente</span>
+                            </div>
+                            <div className="facilitator-loss-formula">
+                              <span>{money(formula.base)}</span>
+                              <span>x</span>
+                              <span>{(formula.percent * 100).toFixed(1)}%</span>
+                              <span>=</span>
+                              <strong>{money(formula.loss)}</strong>
+                            </div>
+                            <p className="small-note">{impact.note}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {session.finalRanking.length > 0 && (
         <div className="card mb-1">
           <h3>🏆 Ranking final</h3>
+          <p className="small-note mb-1">
+            Classificação final das empresas pelo resultado financeiro acumulado na partida.
+          </p>
           <ol className="list-ranking">
             {session.finalRanking.map((r, i) => (
               <li key={r.storeId} className={i === 0 ? "rank-1" : ""}>

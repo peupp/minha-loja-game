@@ -28,6 +28,8 @@ export interface RoundEventImpact {
   eventLabel: string;
   protectedByCapex: boolean;
   affectedDays: number;
+  revenueBeforeLoss?: number;
+  lossPercent?: number;
   revenueLoss: number;
   note: string;
 }
@@ -185,6 +187,15 @@ export const CAPEX_LABELS: Record<CapexType, string> = {
   WEBSITE: "Melhorias no Site",
   SELF_CHECKOUT: "Self Checkout",
   CONTINUOUS_IMPROVEMENT: "Melhoria Contínua",
+};
+
+export const CAPEX_DESCRIPTIONS: Record<CapexType, string> = {
+  SECURITY: "Protege a loja contra perdas causadas por falhas de segurança digital.",
+  SCALE_FREEZER: "Evita problemas operacionais ligados a pesagem, refrigeração e produtos sensíveis.",
+  NETWORK: "Reduz risco de queda de sistemas, pagamentos e comunicação da loja.",
+  WEBSITE: "Melhora a presença digital e ajuda a loja a vender melhor nos canais online.",
+  SELF_CHECKOUT: "Aumenta a capacidade de atendimento e reduz filas em momentos de alta demanda.",
+  CONTINUOUS_IMPROVEMENT: "Representa melhorias constantes em processos, qualidade e eficiência.",
 };
 
 export const ROUND_EVENT_LABELS: Record<RoundEventType, string> = CAPEX_LABELS;

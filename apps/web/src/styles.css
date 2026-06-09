@@ -292,6 +292,21 @@ th {
   width: auto;
 }
 
+.capex-copy {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.capex-copy strong {
+  color: var(--text);
+}
+
+.capex-copy small {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
 .actions {
   display: flex;
   gap: 0.75rem;
@@ -702,6 +717,33 @@ th {
   color: #fff;
 }
 
+.kahoot-home-button {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 20;
+  padding: 0.65rem 0.9rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.88rem;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
+.kahoot-home-button:hover {
+  background: rgba(255, 255, 255, 0.22);
+  text-decoration: none;
+}
+
+.kahoot-home-button--final {
+  position: sticky;
+  top: 1rem;
+  display: block;
+  width: fit-content;
+  margin: 1.5rem auto 0;
+}
+
 .kahoot-screen--loading,
 .kahoot-screen--lobby {
   display: flex;
@@ -852,6 +894,135 @@ th {
   text-align: center;
   opacity: 0.8;
   font-size: 1.1rem;
+}
+
+.kahoot-choices-section {
+  max-width: 1120px;
+  width: 100%;
+  margin: 2.5rem auto 0;
+}
+
+.kahoot-choices-header {
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+.kahoot-choices-header h2 {
+  font-size: clamp(1.35rem, 2.5vw, 2rem);
+  margin-bottom: 0.35rem;
+}
+
+.kahoot-choices-header p {
+  opacity: 0.82;
+}
+
+.kahoot-choices-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.kahoot-choice-card {
+  padding: 1rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.kahoot-choice-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
+.kahoot-choice-head h3 {
+  font-size: 1.15rem;
+}
+
+.kahoot-choice-head span,
+.kahoot-choice-muted {
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 0.88rem;
+}
+
+.kahoot-choice-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
+.kahoot-choice-summary div {
+  padding: 0.65rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.kahoot-choice-summary span,
+.kahoot-choice-summary strong {
+  display: block;
+}
+
+.kahoot-choice-summary span {
+  min-height: 2.3em;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.75rem;
+}
+
+.kahoot-choice-summary strong {
+  margin-top: 0.25rem;
+  font-size: 1rem;
+}
+
+.kahoot-choice-block {
+  margin-top: 0.9rem;
+}
+
+.kahoot-choice-block h4 {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.kahoot-choice-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.kahoot-choice-tags span {
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.kahoot-choice-table {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.kahoot-choice-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.kahoot-choice-row:last-child {
+  border-bottom: none;
+}
+
+.kahoot-choice-row span {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.kahoot-choice-row strong {
+  text-align: right;
 }
 
 .kahoot-lobby-card {
@@ -1165,6 +1336,78 @@ th {
   align-items: end;
 }
 
+.facilitator-loss-section {
+  margin-top: 1.2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.facilitator-loss-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.facilitator-loss-card {
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-soft);
+}
+
+.facilitator-loss-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.facilitator-loss-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.facilitator-loss-item {
+  padding: 0.75rem;
+  border: 1px solid rgba(9, 188, 249, 0.18);
+  border-radius: 10px;
+  background: var(--white);
+}
+
+.facilitator-loss-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.55rem;
+}
+
+.facilitator-loss-label span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.facilitator-loss-formula {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.facilitator-loss-formula span,
+.facilitator-loss-formula strong {
+  padding: 0.28rem 0.45rem;
+  border-radius: 6px;
+  background: rgba(9, 188, 249, 0.09);
+}
+
+.facilitator-loss-formula strong {
+  color: var(--orange);
+  background: rgba(247, 166, 35, 0.18);
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -1185,6 +1428,21 @@ th {
     gap: 0.5rem;
   }
 
+  .kahoot-choices-grid,
+  .kahoot-choice-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .kahoot-choice-head,
+  .kahoot-choice-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .kahoot-choice-row strong {
+    text-align: left;
+  }
+
   .csat-preview-item {
     grid-template-columns: 1fr;
   }
@@ -1199,5 +1457,11 @@ th {
 
   .event-toggle {
     width: 100%;
+  }
+
+  .facilitator-loss-card-head,
+  .facilitator-loss-label {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

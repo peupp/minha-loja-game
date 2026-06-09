@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 export interface RankingEntry {
   id: string;
@@ -12,6 +12,7 @@ interface Props {
   entries: RankingEntry[];
   valueSuffix?: string;
   showPodium?: boolean;
+  children?: ReactNode;
 }
 
 const BAR_COLORS = ["#e21b3c", "#1368ce", "#d89e00", "#26890c", "#9c27b0", "#00bcd4"];
@@ -47,6 +48,7 @@ export default function KahootRanking({
   entries,
   valueSuffix = "%",
   showPodium = false,
+  children,
 }: Props) {
   const sorted = useMemo(
     () => [...entries].sort((a, b) => b.score - a.score),
@@ -143,6 +145,8 @@ export default function KahootRanking({
       {sorted.length === 0 && (
         <p className="kahoot-empty">Aguardando resultados da rodada…</p>
       )}
+
+      {children}
     </div>
   );
 }

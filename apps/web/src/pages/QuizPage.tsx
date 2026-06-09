@@ -4,6 +4,7 @@ import type { StorePlan } from "@minha-loja/shared-types";
 import { fetchFacilitatorStorePlan, saveFacilitatorQuiz } from "../api";
 import { csatBreakdown } from "../utils/csat";
 import { useSession } from "../hooks/useSession";
+import { useFinalRedirect } from "../hooks/useFinalRedirect";
 
 export default function QuizPage() {
   const [search] = useSearchParams();
@@ -13,6 +14,7 @@ export default function QuizPage() {
     search.get("token") ||
     (sessionId ? localStorage.getItem(`facilitator:${sessionId}`) : null);
   const { session } = useSession(sessionId);
+  useFinalRedirect(sessionId, session);
   const [plan, setPlan] = useState<StorePlan | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");

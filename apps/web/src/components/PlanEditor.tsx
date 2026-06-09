@@ -1,5 +1,5 @@
 import type { StorePlan, CapexType } from "@minha-loja/shared-types";
-import { CAPEX_LABELS } from "@minha-loja/shared-types";
+import { CAPEX_DESCRIPTIONS, CAPEX_LABELS } from "@minha-loja/shared-types";
 import { csatBreakdown } from "../utils/csat";
 
 interface Params {
@@ -98,8 +98,8 @@ export default function PlanEditor({
       <section className="card mb-1 card-csat">
         <h3 className="section-title">CSAT — nível de serviço</h3>
         <p className="small-note mb-1">
-          CSAT = operadores (ideal {params.idealOperators ?? 10}) x acertos nas perguntas
-          presenciais do facilitador.
+          Mede a satisfação do cliente. Ele combina operadores de venda com os acertos nas
+          perguntas presenciais registradas pelo facilitador.
         </p>
         <div className="csat-preview">
           <div className="csat-preview-item">
@@ -136,6 +136,10 @@ export default function PlanEditor({
 
       <section className="card mb-1">
         <h3 className="section-title">CAPEX</h3>
+        <p className="small-note mb-1">
+          Investimentos em estrutura e tecnologia. Cada CAPEX custa dinheiro agora, mas pode
+          proteger a loja de eventos da rodada e melhorar a operação.
+        </p>
         <div className="capex-grid">
           {plan.capex.map((item) => (
             <label key={item.type} className="capex-item">
@@ -145,9 +149,12 @@ export default function PlanEditor({
                 disabled={readOnly}
                 onChange={() => toggleCapex(item.type)}
               />
-              <span>
-                {CAPEX_LABELS[item.type]} — R${" "}
-                {(params.capexCosts[item.type] ?? 0).toLocaleString("pt-BR")}
+              <span className="capex-copy">
+                <strong>
+                  {CAPEX_LABELS[item.type]} — R${" "}
+                  {(params.capexCosts[item.type] ?? 0).toLocaleString("pt-BR")}
+                </strong>
+                <small>{CAPEX_DESCRIPTIONS[item.type]}</small>
               </span>
             </label>
           ))}
@@ -156,6 +163,10 @@ export default function PlanEditor({
 
       <section className="card mb-1">
         <h3 className="section-title">Estoque e margem</h3>
+        <p className="small-note mb-1">
+          Define quanto a empresa compra de cada categoria e qual margem deseja aplicar. Mais
+          estoque aumenta disponibilidade, enquanto a margem influencia preço e competitividade.
+        </p>
         <table>
           <thead>
             <tr>
@@ -219,6 +230,10 @@ export default function PlanEditor({
 
       <section className="card mb-1">
         <h3 className="section-title">Operadores de serviço</h3>
+        <p className="small-note mb-1">
+          Pessoas dedicadas ao atendimento e suporte da operação. Uma equipe maior ajuda a manter
+          o nível de serviço, mas também aumenta os custos fixos.
+        </p>
         <div className="form-group">
           <label>Operadores de serviço (SLA)</label>
           <input

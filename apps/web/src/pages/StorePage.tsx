@@ -1,12 +1,13 @@
 ﻿import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import type { StorePlan } from "@minha-loja/shared-types";
+import type { RoundEventImpact, StorePlan } from "@minha-loja/shared-types";
 import { DEFAULT_PLAN } from "@minha-loja/shared-types";
 import { useSession } from "../hooks/useSession";
 import { savePlan, submitPlan } from "../api";
 import PlanEditor from "../components/PlanEditor";
 import { PHASE_LABELS } from "../constants";
 import { csatBreakdown } from "../utils/csat";
+import { useFinalRedirect } from "../hooks/useFinalRedirect";
 
 interface StoreCred {
   storeId: string;
@@ -19,6 +20,7 @@ export default function StorePage() {
   const [search] = useSearchParams();
   const sessionId = search.get("session");
   const { session, loading } = useSession(sessionId);
+  useFinalRedirect(sessionId, session);
   const [cred, setCred] = useState<StoreCred | null>(null);
   const [plan, setPlan] = useState<StorePlan>(DEFAULT_PLAN);
   const [saving, setSaving] = useState(false);
@@ -76,7 +78,7 @@ export default function StorePage() {
   if (!sessionId || !cred) {
     return (
       <div className="page-narrow">
-        <p>Sessao invalida. <Link to="/entrar">Entrar novamente</Link></p>
+        <p>Sessão inválida. <Link to="/entrar">Entrar novamente</Link></p>
       </div>
     );
   }
@@ -123,6 +125,15 @@ export default function StorePage() {
       currency: "BRL",
       maximumFractionDigits: 0,
     });
+  const eventLossImpacts = (
+    myResult?.eventImpacts ?? (myResult?.eventImpact ? [myResult.eventImpact] : [])
+  ).filter((impact) => !impact.protectedByCapex && impact.revenueLoss > 0);
+  const eventLossBase = (impact: RoundEventImpact) =>
+    impact.revenueBeforeLoss ?? (myResult ? myResult.revenue + impact.revenueLoss : impact.revenueLoss);
+  const eventLossPercent = (impact: RoundEventImpact) => {
+    const base = eventLossBase(impact);
+    return impact.lossPercent ?? (base > 0 ? impact.revenueLoss / base : 0);
+  };
 
   return (
     <div className="page">
@@ -132,9 +143,6 @@ export default function StorePage() {
           <h1 className="mt-1">{cred.companyName}</h1>
           <p className="subtitle">{cred.playerName}</p>
         </div>
-        <Link to={`/telao?session=${sessionId}`} className="back-link">
-          Ver telao
-        </Link>
       </div>
 
       <div className="phase-banner">
@@ -147,7 +155,11 @@ export default function StorePage() {
       </div>
 
       <section className="card mb-1">
-        <h3 className="section-title">Estoque que a empresa ja possui</h3>
+        <h3 className="section-title">Estoque que a empresa já possui</h3>
+        <p className="small-note mb-1">
+          Mostra o estoque acumulado que já foi comprado em rodadas anteriores e o valor investido
+          em cada categoria.
+        </p>
         <table>
           <thead>
             <tr>
@@ -171,7 +183,7 @@ export default function StorePage() {
         </table>
         {session.roundResults.length === 0 && (
           <p className="small-note">
-            Nenhum estoque comprado ainda. Apos a primeira rodada, ele aparecera aqui.
+            Nenhum estoque comprado ainda. Após a primeira rodada, ele aparecerá aqui.
           </p>
         )}
       </section>
@@ -216,30 +228,75 @@ export default function StorePage() {
 
       {canEdit && submitted && (
         <p className="muted">
-          Aguarde o facilitador avancar a fase. Voce podera editar novamente na proxima configuracao.
+          Aguarde o facilitador avançar a fase. Você poderá editar novamente na próxima configuração.
         </p>
       )}
 
       {!canEdit && myResult && (
         <section className="card">
-          <h3>Ultimo resultado</h3>
+          <h3>Último resultado</h3>
+          <p className="small-note mb-1">
+            Resume o desempenho da empresa na rodada mais recente: participação na demanda,
+            receita, satisfação do cliente e EBITDA.
+          </p>
           <table className="mt-1">
             <tbody>
-              <tr><td>Participacao na demanda</td><td>{myResult.demandShare.toFixed(1)}%</td></tr>
+              <tr><td>Participação na demanda</td><td>{myResult.demandShare.toFixed(1)}%</td></tr>
               <tr><td>Receita</td><td>{money(myResult.revenue)}</td></tr>
               <tr><td>EBITDA %</td><td>{myResult.ebitdaPercent.toFixed(1)}%</td></tr>
               <tr><td>CSAT</td><td>{myResult.csat.toFixed(1)}</td></tr>
             </tbody>
           </table>
 
+          {eventLossImpacts.length > 0 && (
+            <>
+              <h3 className="section-title mt-1">Perda por CAPEX não selecionado</h3>
+              <p className="small-note mb-1">
+                Mostra a conta de quanto a empresa deixou de vender porque o evento acionado não
+                estava protegido pelo CAPEX correspondente.
+              </p>
+              <table className="mt-1">
+                <thead>
+                  <tr>
+                    <th>Evento</th>
+                    <th>Cálculo da perda</th>
+                    <th>Detalhe</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {eventLossImpacts.map((impact) => {
+                    const base = eventLossBase(impact);
+                    const percent = eventLossPercent(impact);
+                    return (
+                      <tr key={impact.eventType}>
+                        <td>{impact.eventLabel}</td>
+                        <td>
+                          {money(base)} x {(percent * 100).toFixed(1)}% ={" "}
+                          <strong>{money(impact.revenueLoss)}</strong>
+                        </td>
+                        <td>
+                          {impact.affectedDays} dia(s). {impact.note}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </>
+          )}
+
           <h3 className="section-title mt-1">Contas do ranking</h3>
+          <p className="small-note mb-1">
+            Explica como os pontos e valores financeiros foram calculados para chegar no resultado
+            da rodada.
+          </p>
           <table className="mt-1">
             <tbody>
-              <tr><td>Pontos de preco</td><td>{myResult.priceScore}</td></tr>
+              <tr><td>Pontos de preço</td><td>{myResult.priceScore}</td></tr>
               <tr><td>Pontos de disponibilidade</td><td>{myResult.availabilityScore}</td></tr>
               <tr><td>Pontos de CSAT</td><td>{myResult.csatScore}</td></tr>
               <tr>
-                <td>Participacao na demanda</td>
+                <td>Participação na demanda</td>
                 <td>{myResult.totalRankPoints} / {myResult.totalMarketPoints} = {myResult.demandShare.toFixed(1)}%</td>
               </tr>
               <tr>
@@ -264,12 +321,15 @@ export default function StorePage() {
       )}
 
       {!canEdit && !myResult && (
-        <p className="muted">Aguarde o facilitador. Envie seu plano quando a configuracao estiver aberta.</p>
+        <p className="muted">Aguarde o facilitador. Envie seu plano quando a configuração estiver aberta.</p>
       )}
 
       {session.phase === "FINAL" && session.finalRanking.length > 0 && (
         <section className="card mt-1">
           <h3>Ranking final</h3>
+          <p className="small-note mb-1">
+            Classificação final das empresas pelo EBITDA acumulado ao longo da partida.
+          </p>
           <ol className="list-ranking">
             {session.finalRanking.map((r, i) => (
               <li
@@ -286,6 +346,9 @@ export default function StorePage() {
           {myFinal && (
             <div className="mt-1">
               <h3 className="section-title">Sua conta final</h3>
+              <p className="small-note mb-1">
+                Detalha a receita, o EBITDA acumulado e o percentual final usado no ranking.
+              </p>
               <table>
                 <tbody>
                   <tr><td>EBITDA acumulado</td><td>{money(myFinal.ebitda)}</td></tr>

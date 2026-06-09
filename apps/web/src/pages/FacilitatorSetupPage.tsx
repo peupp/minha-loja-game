@@ -4,6 +4,7 @@ import type { CapexType, GameConfig, ProductCategory } from "@minha-loja/shared-
 import { CAPEX_LABELS } from "@minha-loja/shared-types";
 import { fetchParams, updateGameConfig } from "../api";
 import { useSession } from "../hooks/useSession";
+import { useFinalRedirect } from "../hooks/useFinalRedirect";
 
 const moneyFields: { key: keyof GameConfig; label: string }[] = [
   { key: "initialCash", label: "Caixa inicial por empresa" },
@@ -49,6 +50,7 @@ export default function FacilitatorSetupPage() {
     search.get("token") ||
     (sessionId ? localStorage.getItem(`facilitator:${sessionId}`) : null);
   const { session, loading } = useSession(sessionId);
+  useFinalRedirect(sessionId, session);
   const [draft, setDraft] = useState<GameConfig | null>(null);
   const [defaultConfig, setDefaultConfig] = useState<GameConfig | null>(null);
   const [saving, setSaving] = useState(false);
@@ -170,6 +172,9 @@ export default function FacilitatorSetupPage() {
 
       <section className="card mb-1">
         <h3 className="section-title">Formato da partida</h3>
+        <p className="small-note mb-1">
+          Define quantas rodadas serão jogadas antes do cálculo do ranking final.
+        </p>
         <div className="round-count-control">
           <label>Quantidade de rodadas</label>
           <input
@@ -191,6 +196,10 @@ export default function FacilitatorSetupPage() {
 
       <section className="card mb-1">
         <h3 className="section-title">Economia do jogo</h3>
+        <p className="small-note mb-1">
+          Controla os valores-base da simulação, como caixa inicial, custos, salários e demanda de
+          mercado por rodada.
+        </p>
         <div className="config-grid mb-1">
           {gameFields.map((field) => (
             <div className="form-group" key={field.key}>
@@ -224,6 +233,9 @@ export default function FacilitatorSetupPage() {
 
       <section className="card mb-1">
         <h3 className="section-title">Taxas e regras</h3>
+        <p className="small-note mb-1">
+          Ajusta percentuais e limites que influenciam impostos, juros, atendimento ideal e CSAT.
+        </p>
         <div className="config-grid">
           {rateFields.map((field) => (
             <div className="form-group" key={field.key}>
@@ -245,6 +257,9 @@ export default function FacilitatorSetupPage() {
 
       <section className="card mb-1">
         <h3 className="section-title">Custos de CAPEX</h3>
+        <p className="small-note mb-1">
+          Define quanto cada investimento de CAPEX custa para as empresas durante a configuração.
+        </p>
         <div className="config-grid">
           {capexTypes.map((type) => (
             <div className="form-group" key={type}>
@@ -276,6 +291,10 @@ export default function FacilitatorSetupPage() {
             + Categoria
           </button>
         </div>
+        <p className="small-note mb-1">
+          Configura quais produtos existem no jogo, o custo de compra e o limite disponível para
+          todas as empresas.
+        </p>
         <div className="config-category-list">
           {draft.categories.map((category, index) => (
             <div className="config-category-row" key={`${category.id}-${index}`}>

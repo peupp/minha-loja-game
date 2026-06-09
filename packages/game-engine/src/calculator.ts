@@ -228,14 +228,18 @@ export function simulateRound(
       const protectedByCapex = hasCapex(store.plan, event.type);
       if (!protectedByCapex) {
         const loss = eventLossFactor(event, inventoryByCategory, roundNumber);
-        const revenueLoss = revenue * Math.min(loss.factor, 1);
+        const lossPercent = Math.min(loss.factor, 1);
+        const revenueBeforeLoss = revenue;
+        const revenueLoss = revenueBeforeLoss * lossPercent;
         revenue -= revenueLoss;
-        cogs -= cogs * Math.min(loss.factor, 1);
+        cogs -= cogs * lossPercent;
         eventImpacts.push({
           eventType: event.type,
           eventLabel: ROUND_EVENT_LABELS[event.type],
           protectedByCapex,
           affectedDays: event.days,
+          revenueBeforeLoss,
+          lossPercent,
           revenueLoss,
           note: loss.note,
         });
