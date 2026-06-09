@@ -11,6 +11,7 @@
     "dev": "npm run build -w packages/shared-types && npm run build -w packages/game-engine && concurrently \"npm run dev -w apps/api\" \"npm run dev -w apps/web\"",
     "build": "npm run build -w packages/shared-types && npm run build -w packages/game-engine && npm run build -w apps/api && npm run build -w apps/web",
     "start": "npm run start -w apps/api",
+    "render:start": "npm run db:push -w apps/api && npm run start -w apps/api",
     "db:setup": "npm run db:setup -w apps/api",
     "db:migrate": "npm run db:migrate -w apps/api",
     "db:push": "npm run db:push -w apps/api",

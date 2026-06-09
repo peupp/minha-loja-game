@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import path from "path";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import {
@@ -205,6 +206,13 @@ app.post("/api/sessions/:sessionId/advance", async (req, res) => {
     console.error(e);
     res.status(500).json({ error: "Erro ao avançar fase" });
   }
+});
+
+const webDistPath = path.resolve(__dirname, "../../web/dist");
+app.use(express.static(webDistPath));
+app.get("*", (req, res, next) => {
+  if (req.path.startsWith("/api")) return next();
+  res.sendFile(path.join(webDistPath, "index.html"));
 });
 
 io.on("connection", (socket) => {
