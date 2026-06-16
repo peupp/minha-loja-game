@@ -8,7 +8,7 @@ import { useFinalRedirect } from "../hooks/useFinalRedirect";
 
 const moneyFields: { key: keyof GameConfig; label: string }[] = [
   { key: "initialCash", label: "Caixa inicial por empresa" },
-  { key: "monthlyLicenseBase", label: "Licença mensal base" },
+  { key: "monthlyLicenseBase", label: "Licença mensal por operador" },
   { key: "maintenanceEquipment", label: "Manutenção sem balança/freezer" },
   { key: "selfCheckoutLicenseEach", label: "Licença por self-checkout" },
   { key: "salarySales", label: "Salário operador de venda" },

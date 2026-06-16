@@ -6,6 +6,9 @@ interface Params {
   categories: { id: string; name: string; unitCost: number; maxAvailable: number }[];
   initialCash: number;
   capexCosts: Record<string, number>;
+  monthlyLicenseBase: number;
+  salarySales: number;
+  salaryService: number;
   idealOperators?: number;
   questionCount?: number;
 }
@@ -47,6 +50,18 @@ export default function PlanEditor({
         0
       )
     : 0;
+  const operatorsCount = plan.operatorsSales + plan.operatorsService;
+  const softwareLicenseCost = operatorsCount * params.monthlyLicenseBase;
+  const softwareAddonCost =
+    (plan.capex.find((item) => item.type === "SECURITY")?.approved
+      ? params.monthlyLicenseBase * 0.2
+      : 0) +
+    (plan.capex.find((item) => item.type === "WEBSITE")?.approved
+      ? params.monthlyLicenseBase * 0.3
+      : 0);
+  const operatorsCost =
+    plan.operatorsSales * params.salarySales +
+    plan.operatorsService * params.salaryService;
   const cashRemaining = budgetInitialCash - inventoryCost - capexCost;
   const moneyFormat = new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -130,6 +145,62 @@ export default function PlanEditor({
           <div className="csat-preview-total">
             <span>CSAT</span>
             <strong>{csat.toFixed(1)}%</strong>
+          </div>
+        </div>
+      </section>
+
+      <section className="card mb-1 card-operational">
+        <h3 className="section-title">Plano operacional</h3>
+        <p className="small-note mb-1">
+          Define a equipe usada na operação e calcula a licença de software por operador.
+        </p>
+        <div className="operational-grid mb-1">
+          <div className="form-group">
+            <label>Operadores de venda</label>
+            <input
+              type="number"
+              min={0}
+              max={30}
+              value={plan.operatorsSales}
+              disabled={readOnly}
+              onChange={(e) =>
+                onChange({ ...plan, operatorsSales: Number(e.target.value) })
+              }
+            />
+          </div>
+          <div className="form-group">
+            <label>Operadores de serviço (SLA)</label>
+            <input
+              type="number"
+              min={0}
+              max={20}
+              value={plan.operatorsService}
+              disabled={readOnly}
+              onChange={(e) =>
+                onChange({ ...plan, operatorsService: Number(e.target.value) })
+              }
+            />
+          </div>
+        </div>
+        <div className="operational-summary">
+          <div>
+            <span>Total de operadores</span>
+            <strong>{operatorsCount}</strong>
+          </div>
+          <div>
+            <span>Licença mensal</span>
+            <strong>
+              {operatorsCount} x {moneyFormat.format(params.monthlyLicenseBase)} ={" "}
+              {moneyFormat.format(softwareLicenseCost)}
+            </strong>
+          </div>
+          <div>
+            <span>Salários mensais</span>
+            <strong>{moneyFormat.format(operatorsCost)}</strong>
+          </div>
+          <div>
+            <span>Adicionais de software</span>
+            <strong>{moneyFormat.format(softwareAddonCost)}</strong>
           </div>
         </div>
       </section>
@@ -228,31 +299,10 @@ export default function PlanEditor({
         </table>
       </section>
 
-      <section className="card mb-1">
-        <h3 className="section-title">Operadores de serviço</h3>
-        <p className="small-note mb-1">
-          Pessoas dedicadas ao atendimento e suporte da operação. Uma equipe maior ajuda a manter
-          o nível de serviço, mas também aumenta os custos fixos.
-        </p>
-        <div className="form-group">
-          <label>Operadores de serviço (SLA)</label>
-          <input
-            type="number"
-            min={0}
-            max={20}
-            value={plan.operatorsService}
-            disabled={readOnly}
-            onChange={(e) =>
-              onChange({ ...plan, operatorsService: Number(e.target.value) })
-            }
-          />
-        </div>
-        <p className="small-note">
-          Caixa inicial: R$ {params.initialCash.toLocaleString("pt-BR")} — estoque e CAPEX na 1ª
-          configuração.
-        </p>
-      </section>
+      <p className="small-note">
+        Caixa inicial: R$ {params.initialCash.toLocaleString("pt-BR")} — estoque e CAPEX na 1ª
+        configuração.
+      </p>
     </div>
   );
 }
-

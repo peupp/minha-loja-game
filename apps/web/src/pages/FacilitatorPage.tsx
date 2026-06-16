@@ -69,6 +69,12 @@ export default function FacilitatorPage() {
   const setupUrl = `/facilitador/configuracao?session=${sessionId}&token=${token}`;
   const selectedEventsCount = EVENT_TYPES.filter((type) => eventDaysByType[type] > 0).length;
   const lastRound = session.roundResults[session.roundResults.length - 1];
+  const storesWithOperationalPlan = session.stores
+    .map((store) => ({
+      store,
+      plan: store.planSubmitted ?? store.planDraft,
+    }))
+    .filter((item) => Boolean(item.plan));
 
   const setEventDays = (type: RoundEventType, days: number) => {
     setEventDaysByType((current) => ({
@@ -238,6 +244,68 @@ export default function FacilitatorPage() {
         )}
       </div>
 
+      {storesWithOperationalPlan.length > 0 && (
+        <div className="card mb-1">
+          <h3 className="section-title">Plano operacional das empresas</h3>
+          <p className="small-note mb-1">
+            Mostra a equipe planejada e a licença de software calculada por operador.
+          </p>
+          <div className="operational-plan-list">
+            {storesWithOperationalPlan.map(({ store, plan }) => {
+              if (!plan) return null;
+              const operatorsCount = plan.operatorsSales + plan.operatorsService;
+              const softwareLicenseCost =
+                operatorsCount * session.gameConfig.monthlyLicenseBase;
+              const softwareAddonCost =
+                (plan.capex.find((item) => item.type === "SECURITY")?.approved
+                  ? session.gameConfig.monthlyLicenseBase * 0.2
+                  : 0) +
+                (plan.capex.find((item) => item.type === "WEBSITE")?.approved
+                  ? session.gameConfig.monthlyLicenseBase * 0.3
+                  : 0);
+              const operatorsCost =
+                plan.operatorsSales * session.gameConfig.salarySales +
+                plan.operatorsService * session.gameConfig.salaryService;
+              return (
+                <div className="operational-plan-card" key={store.id}>
+                  <div className="operational-plan-head">
+                    <strong>{store.companyName}</strong>
+                    <span className="badge">
+                      {store.planSubmitted ? "Enviado" : "Rascunho"}
+                    </span>
+                  </div>
+                  <div className="operational-summary">
+                    <div>
+                      <span>Venda</span>
+                      <strong>{plan.operatorsSales}</strong>
+                    </div>
+                    <div>
+                      <span>Serviço</span>
+                      <strong>{plan.operatorsService}</strong>
+                    </div>
+                    <div>
+                      <span>Licença mensal</span>
+                      <strong>
+                        {operatorsCount} x {money(session.gameConfig.monthlyLicenseBase)} ={" "}
+                        {money(softwareLicenseCost)}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Salários mensais</span>
+                      <strong>{money(operatorsCost)}</strong>
+                    </div>
+                    <div>
+                      <span>Adicionais de software</span>
+                      <strong>{money(softwareAddonCost)}</strong>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {lastRound && (
         <div className="card mb-1">
           <h3 className="section-title">Última rodada</h3>
@@ -277,6 +345,50 @@ export default function FacilitatorPage() {
                   </td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+
+          <h3 className="section-title mt-1">Custos operacionais da rodada</h3>
+          <p className="small-note mb-1">
+            Detalha a licença de software por operador e os custos fixos mensais usados no EBITDA.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Empresa</th>
+                <th>Operadores</th>
+                <th>Licença mensal</th>
+                <th>Fixos mensais</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lastRound.stores.map((result) => {
+                const store = session.stores.find((item) => item.id === result.storeId);
+                const plan = store?.planSubmitted ?? store?.planDraft;
+                const softwareLicenseCost = result.softwareLicenseCost ?? 0;
+                const softwareAddonCost = result.softwareAddonCost ?? 0;
+                const operatorsCount = plan
+                  ? plan.operatorsSales + plan.operatorsService
+                  : Math.round(softwareLicenseCost / session.gameConfig.monthlyLicenseBase);
+                return (
+                  <tr key={result.storeId}>
+                    <td>{result.companyName}</td>
+                    <td>{operatorsCount}</td>
+                    <td>
+                      {operatorsCount} x {money(session.gameConfig.monthlyLicenseBase)} ={" "}
+                      {money(softwareLicenseCost)}
+                    </td>
+                    <td>
+                      licença {money(softwareLicenseCost)} + adicionais{" "}
+                      {money(softwareAddonCost)} + salários {money(result.operatorsCost ?? 0)} +
+                      manutenção{" "}
+                      {money(result.maintenanceCost ?? 0)} + self-checkout{" "}
+                      {money(result.selfCheckoutLicenseCost ?? 0)} ={" "}
+                      {money(result.monthlyFixed)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
 
@@ -352,4 +464,3 @@ export default function FacilitatorPage() {
     </div>
   );
 }
-

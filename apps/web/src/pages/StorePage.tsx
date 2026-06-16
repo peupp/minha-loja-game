@@ -134,6 +134,18 @@ export default function StorePage() {
     const base = eventLossBase(impact);
     return impact.lossPercent ?? (base > 0 ? impact.revenueLoss / base : 0);
   };
+  const operatorsCount = plan.operatorsSales + plan.operatorsService;
+  const softwareLicenseCost = operatorsCount * session.gameConfig.monthlyLicenseBase;
+  const softwareAddonCost =
+    (plan.capex.find((item) => item.type === "SECURITY")?.approved
+      ? session.gameConfig.monthlyLicenseBase * 0.2
+      : 0) +
+    (plan.capex.find((item) => item.type === "WEBSITE")?.approved
+      ? session.gameConfig.monthlyLicenseBase * 0.3
+      : 0);
+  const operatorsCost =
+    plan.operatorsSales * session.gameConfig.salarySales +
+    plan.operatorsService * session.gameConfig.salaryService;
 
   return (
     <div className="page">
@@ -202,6 +214,40 @@ export default function StorePage() {
           CSAT atual: <strong>{csat.toFixed(1)}%</strong> - ajuste operadores no plano ou edite as
           respostas registradas.
         </p>
+      )}
+
+      {(!canEdit || submitted) && (
+        <section className="card mb-1 card-operational">
+          <h3 className="section-title">Plano operacional</h3>
+          <p className="small-note mb-1">
+            Equipe planejada e licença de software calculada por operador.
+          </p>
+          <div className="operational-summary">
+            <div>
+              <span>Operadores de venda</span>
+              <strong>{plan.operatorsSales}</strong>
+            </div>
+            <div>
+              <span>Operadores de serviço</span>
+              <strong>{plan.operatorsService}</strong>
+            </div>
+            <div>
+              <span>Licença mensal</span>
+              <strong>
+                {operatorsCount} x {money(session.gameConfig.monthlyLicenseBase)} ={" "}
+                {money(softwareLicenseCost)}
+              </strong>
+            </div>
+            <div>
+              <span>Salários mensais</span>
+              <strong>{money(operatorsCost)}</strong>
+            </div>
+            <div>
+              <span>Adicionais de software</span>
+              <strong>{money(softwareAddonCost)}</strong>
+            </div>
+          </div>
+        </section>
       )}
 
       {canEdit && !submitted && (
@@ -306,6 +352,24 @@ export default function StorePage() {
               <tr>
                 <td>Custos</td>
                 <td>CMV {money(myResult.cogs)} + impostos {money(myResult.taxes)} + fixos {money(myResult.monthlyFixed / 3)} = {money(myResult.costs)}</td>
+              </tr>
+              <tr>
+                <td>Fixos mensais</td>
+                <td>
+                  licença {money(myResult.softwareLicenseCost ?? 0)} + adicionais{" "}
+                  {money(myResult.softwareAddonCost ?? 0)} + salários{" "}
+                  {money(myResult.operatorsCost ?? 0)} + manutenção{" "}
+                  {money(myResult.maintenanceCost ?? 0)} + self-checkout{" "}
+                  {money(myResult.selfCheckoutLicenseCost ?? 0)} = {money(myResult.monthlyFixed)}
+                </td>
+              </tr>
+              <tr>
+                <td>Licença por operador</td>
+                <td>
+                  {operatorsCount} operadores x{" "}
+                  {money(session.gameConfig.monthlyLicenseBase)} ={" "}
+                  {money(myResult.softwareLicenseCost ?? softwareLicenseCost)}
+                </td>
               </tr>
               <tr>
                 <td>EBITDA</td>

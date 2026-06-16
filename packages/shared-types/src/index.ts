@@ -104,6 +104,11 @@ export interface RoundStoreResult {
   inventoryCost: number;
   capexCost: number;
   spend: number;
+  softwareLicenseCost: number;
+  softwareAddonCost: number;
+  operatorsCost: number;
+  maintenanceCost: number;
+  selfCheckoutLicenseCost: number;
   monthlyFixed: number;
   negativeCashInterest: number;
   cogs: number;

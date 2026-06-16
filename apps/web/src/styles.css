@@ -27,6 +27,7 @@ body {
     radial-gradient(circle at 10% 10%, rgba(18, 203, 196, 0.28) 0%, transparent 44%),
     radial-gradient(circle at 90% 15%, rgba(9, 188, 249, 0.3) 0%, transparent 42%),
     linear-gradient(180deg, #f4fcff 0%, #ffffff 60%);
+  overflow-x: hidden;
 }
 
 #root {
@@ -51,6 +52,12 @@ button {
   font-weight: 700;
   font-size: 0.95rem;
   transition: transform 0.15s, opacity 0.15s, box-shadow 0.2s, filter 0.2s;
+}
+
+button,
+input,
+select {
+  min-width: 0;
 }
 
 button:active {
@@ -119,24 +126,28 @@ label {
   border-radius: 18px;
   padding: 1.5rem;
   box-shadow: 0 16px 30px rgba(9, 188, 249, 0.09);
+  min-width: 0;
 }
 
 .page {
   max-width: 960px;
   margin: 0 auto;
   padding: 2.1rem 1.25rem 2.8rem;
+  width: 100%;
 }
 
 .page-narrow {
   max-width: 520px;
   margin: 0 auto;
   padding: 2.1rem 1.25rem 2.8rem;
+  width: 100%;
 }
 
 h1 {
-  font-size: 2rem;
+  font-size: clamp(1.65rem, 7vw, 2rem);
   font-weight: 800;
   margin-bottom: 0.5rem;
+  line-height: 1.12;
 }
 
 .subtitle {
@@ -155,6 +166,31 @@ h1 {
 }
 
 @media (max-width: 600px) {
+  button {
+    min-height: 44px;
+    padding: 0.78rem 1rem;
+  }
+
+  input,
+  select {
+    min-height: 44px;
+    font-size: 1rem;
+  }
+
+  .page,
+  .page-narrow {
+    padding: 1rem 0.8rem 1.8rem;
+  }
+
+  .card {
+    border-radius: 12px;
+    padding: 1rem;
+  }
+
+  .subtitle {
+    margin-bottom: 1.25rem;
+  }
+
   .grid-2 {
     grid-template-columns: 1fr;
   }
@@ -167,6 +203,41 @@ h1 {
 
   .cash-highlight-breakdown {
     justify-content: flex-start;
+  }
+
+  .cash-highlight-breakdown span {
+    white-space: normal;
+  }
+
+  .pin-display {
+    font-size: clamp(1.9rem, 12vw, 2.5rem);
+    letter-spacing: 0.12em;
+    overflow-wrap: anywhere;
+  }
+
+  .page-header {
+    display: block;
+  }
+
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .actions button,
+  .actions a,
+  .landing-hero-actions button,
+  .landing-hero-actions a {
+    width: 100%;
+  }
+
+  .capex-item {
+    align-items: flex-start;
+  }
+
+  th,
+  td {
+    padding: 0.6rem 0.55rem;
   }
 }
 
@@ -205,6 +276,7 @@ table {
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
+  table-layout: auto;
 }
 
 th,
@@ -212,12 +284,38 @@ td {
   padding: 0.66rem 0.6rem;
   text-align: left;
   border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  overflow-wrap: anywhere;
 }
 
 th {
   color: var(--muted);
   font-weight: 700;
   background: rgba(9, 188, 249, 0.09);
+}
+
+@media (max-width: 600px) {
+  table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  thead,
+  tbody {
+    display: table;
+    min-width: 100%;
+  }
+
+  tr {
+    display: table-row;
+  }
+
+  th,
+  td {
+    min-width: max-content;
+  }
 }
 
 .capex-grid {
@@ -414,6 +512,7 @@ th {
   max-width: 1160px;
   margin: 0 auto;
   padding: 1.25rem 1.25rem 2.5rem;
+  width: 100%;
 }
 
 .landing-topbar {
@@ -458,7 +557,7 @@ th {
 }
 
 .landing-hero-content h1 {
-  font-size: 2.3rem;
+  font-size: clamp(1.8rem, 6vw, 2.3rem);
   line-height: 1.1;
   max-width: 18ch;
 }
@@ -671,8 +770,7 @@ th {
 
 @media (max-width: 600px) {
   .landing {
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding: 0.9rem 0.8rem 1.8rem;
   }
 
   .landing-topbar {
@@ -681,15 +779,18 @@ th {
   }
 
   .landing-nav {
-    gap: 0.7rem;
+    width: 100%;
+    gap: 0.55rem;
+    justify-content: space-between;
   }
 
   .landing-hero-content {
-    padding: 1.3rem;
+    padding: 1rem;
+    border-radius: 12px;
   }
 
   .landing-hero-content h1 {
-    font-size: 1.65rem;
+    max-width: none;
   }
 
   .landing-highlight-grid,
@@ -707,6 +808,14 @@ th {
     align-items: stretch;
     flex-direction: column;
   }
+
+  .round-count-control {
+    max-width: none;
+  }
+
+  .config-remove-btn {
+    width: 100%;
+  }
 }
 
 /* —— Kahoot: ranking & quiz —— */
@@ -715,6 +824,7 @@ th {
   padding: 2rem 1.5rem 3rem;
   background: linear-gradient(160deg, #46178f 0%, #2d0a5e 45%, #1a0533 100%);
   color: #fff;
+  overflow-x: hidden;
 }
 
 .kahoot-home-button {
@@ -817,6 +927,7 @@ th {
 .kahoot-row-labels {
   display: flex;
   justify-content: space-between;
+  gap: 0.75rem;
   margin-bottom: 0.35rem;
   font-weight: 700;
   font-size: 1.1rem;
@@ -1023,6 +1134,7 @@ th {
 
 .kahoot-choice-row strong {
   text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .kahoot-lobby-card {
@@ -1046,6 +1158,7 @@ th {
   font-size: 1.15rem;
   font-weight: 600;
   animation: kahoot-pop 0.4s ease backwards;
+  min-width: 0;
 }
 
 .kahoot-lobby-rank {
@@ -1090,6 +1203,7 @@ th {
 .kahoot-quiz-top {
   display: flex;
   justify-content: space-between;
+  gap: 1rem;
   font-weight: 700;
   font-size: 0.95rem;
   opacity: 0.9;
@@ -1132,6 +1246,7 @@ th {
   color: #fff;
   min-height: 72px;
   transition: transform 0.15s, filter 0.15s;
+  overflow-wrap: anywhere;
 }
 
 .kahoot-opt:hover:not(:disabled) {
@@ -1224,6 +1339,7 @@ th {
 .csat-row {
   display: flex;
   justify-content: space-between;
+  gap: 1rem;
   padding: 0.5rem 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 }
@@ -1281,6 +1397,69 @@ th {
   margin-top: 0.25rem;
 }
 
+.card-operational {
+  border-color: rgba(247, 166, 35, 0.34);
+}
+
+.operational-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.operational-grid .form-group {
+  margin-bottom: 0;
+}
+
+.operational-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.operational-summary div {
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-soft);
+}
+
+.operational-summary span,
+.operational-summary strong {
+  display: block;
+}
+
+.operational-summary span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.operational-summary strong {
+  margin-top: 0.25rem;
+  overflow-wrap: anywhere;
+}
+
+.operational-plan-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.operational-plan-card {
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-soft);
+}
+
+.operational-plan-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
 .facilitator-links {
   display: flex;
   flex-wrap: wrap;
@@ -1317,7 +1496,7 @@ th {
   border-radius: 10px;
   background: var(--bg-soft);
   color: var(--text);
-  white-space: nowrap;
+  min-width: 0;
 }
 
 .event-toggle input {
@@ -1420,6 +1599,89 @@ th {
 }
 
 @media (max-width: 640px) {
+  .kahoot-screen,
+  .kahoot-quiz-screen {
+    padding: 1rem 0.8rem 1.6rem;
+  }
+
+  .kahoot-home-button {
+    position: static;
+    display: inline-flex;
+    width: fit-content;
+    margin: 0 0 1rem auto;
+  }
+
+  .kahoot-header {
+    margin-bottom: 1.2rem;
+  }
+
+  .kahoot-row {
+    gap: 0.55rem;
+  }
+
+  .kahoot-row-rank {
+    width: 1.5rem;
+    font-size: 1.1rem;
+  }
+
+  .kahoot-row-labels {
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.95rem;
+  }
+
+  .kahoot-bar-track {
+    height: 28px;
+  }
+
+  .kahoot-podium {
+    min-height: 150px;
+  }
+
+  .kahoot-podium-item {
+    padding: 0.75rem 0.45rem;
+    min-width: 0;
+  }
+
+  .kahoot-podium-item strong {
+    font-size: 0.86rem;
+    overflow-wrap: anywhere;
+  }
+
+  .kahoot-lobby-card {
+    padding: 1rem;
+    border-radius: 12px;
+  }
+
+  .kahoot-lobby-list li {
+    align-items: flex-start;
+    font-size: 1rem;
+  }
+
+  .kahoot-lobby-status {
+    flex: 0 0 auto;
+  }
+
+  .kahoot-quiz-top,
+  .csat-register-head,
+  .csat-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .kahoot-quiz-question-wrap {
+    padding: 1rem 0;
+  }
+
+  .kahoot-opt {
+    min-height: 64px;
+    padding: 0.85rem;
+  }
+
+  .kahoot-quiz-score {
+    font-size: 3rem;
+  }
+
   .kahoot-quiz-options {
     grid-template-columns: 1fr;
   }
@@ -1447,6 +1709,11 @@ th {
     grid-template-columns: 1fr;
   }
 
+  .operational-grid,
+  .operational-summary {
+    grid-template-columns: 1fr;
+  }
+
   .event-control-head {
     flex-direction: column;
   }
@@ -1460,8 +1727,35 @@ th {
   }
 
   .facilitator-loss-card-head,
-  .facilitator-loss-label {
+  .facilitator-loss-label,
+  .operational-plan-head {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .facilitator-loss-formula {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 380px) {
+  .page,
+  .page-narrow,
+  .landing,
+  .kahoot-screen,
+  .kahoot-quiz-screen {
+    padding-left: 0.65rem;
+    padding-right: 0.65rem;
+  }
+
+  .card,
+  .landing-hero-content,
+  .kahoot-choice-card {
+    padding: 0.85rem;
+  }
+
+  .badge {
+    overflow-wrap: anywhere;
   }
 }

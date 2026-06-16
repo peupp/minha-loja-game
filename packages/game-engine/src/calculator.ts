@@ -76,6 +76,11 @@ function planSpend(plan: StorePlan, config: GameConfig): {
   inventoryCost: number;
   inventoryByCategory: Record<string, number>;
   capexCost: number;
+  softwareLicenseCost: number;
+  softwareAddonCost: number;
+  operatorsCost: number;
+  maintenanceCost: number;
+  selfCheckoutLicenseCost: number;
   monthlyFixed: number;
 } {
   let inventoryCost = 0;
@@ -93,27 +98,49 @@ function planSpend(plan: StorePlan, config: GameConfig): {
     if (item.approved) capexCost += config.capexCosts[item.type] ?? 0;
   }
 
-  let monthlyFixed = config.monthlyLicenseBase;
+  const operatorsCount = plan.operatorsSales + plan.operatorsService;
+  const softwareLicenseCost = operatorsCount * config.monthlyLicenseBase;
+  let softwareAddonCost = 0;
+  let maintenanceCost = 0;
+  let selfCheckoutLicenseCost = 0;
+  let monthlyFixed = 0;
   const hasScale = plan.capex.find((c) => c.type === "SCALE_FREEZER")?.approved;
-  if (!hasScale) monthlyFixed += config.maintenanceEquipment;
+  if (!hasScale) maintenanceCost += config.maintenanceEquipment;
 
   const selfCount = plan.capex.find((c) => c.type === "SELF_CHECKOUT")?.approved
     ? 4
     : 0;
-  monthlyFixed += selfCount * config.selfCheckoutLicenseEach;
+  selfCheckoutLicenseCost += selfCount * config.selfCheckoutLicenseEach;
 
   if (plan.capex.find((c) => c.type === "SECURITY")?.approved) {
-    monthlyFixed += config.monthlyLicenseBase * 0.2;
+    softwareAddonCost += config.monthlyLicenseBase * 0.2;
   }
   if (plan.capex.find((c) => c.type === "WEBSITE")?.approved) {
-    monthlyFixed += config.monthlyLicenseBase * 0.3;
+    softwareAddonCost += config.monthlyLicenseBase * 0.3;
   }
 
-  monthlyFixed +=
+  const operatorsCost =
     plan.operatorsSales * config.salarySales +
     plan.operatorsService * config.salaryService;
 
-  return { inventoryCost, inventoryByCategory, capexCost, monthlyFixed };
+  monthlyFixed +=
+    softwareLicenseCost +
+    softwareAddonCost +
+    maintenanceCost +
+    selfCheckoutLicenseCost +
+    operatorsCost;
+
+  return {
+    inventoryCost,
+    inventoryByCategory,
+    capexCost,
+    softwareLicenseCost,
+    softwareAddonCost,
+    operatorsCost,
+    maintenanceCost,
+    selfCheckoutLicenseCost,
+    monthlyFixed,
+  };
 }
 
 function hasCapex(plan: StorePlan, type: RoundEvent["type"]): boolean {
@@ -208,8 +235,17 @@ export function simulateRound(
     const demandShare = rankScore / sumPts;
     let revenue = totalDemand * demandShare;
 
-    const { inventoryCost, inventoryByCategory, capexCost, monthlyFixed } =
-      planSpend(store.plan, config);
+    const {
+      inventoryCost,
+      inventoryByCategory,
+      capexCost,
+      softwareLicenseCost,
+      softwareAddonCost,
+      operatorsCost,
+      maintenanceCost,
+      selfCheckoutLicenseCost,
+      monthlyFixed,
+    } = planSpend(store.plan, config);
     const spend =
       store.configRound === 1 ? inventoryCost + capexCost : inventoryCost;
     let cash =
@@ -274,6 +310,11 @@ export function simulateRound(
       inventoryCost,
       capexCost,
       spend,
+      softwareLicenseCost,
+      softwareAddonCost,
+      operatorsCost,
+      maintenanceCost,
+      selfCheckoutLicenseCost,
       monthlyFixed,
       negativeCashInterest,
       cogs,
